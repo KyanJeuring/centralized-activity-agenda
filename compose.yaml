@@ -1,5 +1,5 @@
 services:
-  # Static Frontend
+  # Angular Frontend (Not final decision)
   frontend:
     hostname: angular_frontend
     container_name: angular_frontend
