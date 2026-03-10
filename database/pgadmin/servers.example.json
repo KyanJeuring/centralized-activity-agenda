@@ -3,7 +3,7 @@
 		"1": {
 			"Name": "centralized_activity_agenda",
 			"Group": "Servers",
-			"Host": "postgres",
+			"Host": "database",
 			"Port": 5432,
 			"MaintenanceDB": "centralized_activity_agenda_db",
 			"Username": "example_user",
