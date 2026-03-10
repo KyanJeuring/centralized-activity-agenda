@@ -1,0 +1,15 @@
+{
+	"Servers": {
+		"1": {
+			"Name": "centralized_activity_agenda",
+			"Group": "Servers",
+			"Host": "postgres",
+			"Port": 5432,
+			"MaintenanceDB": "centralized_activity_agenda_db",
+			"Username": "example_user",
+			"Password": "example_password",
+      		"SavePassword": false,
+			"SSLMode": "prefer"
+		}
+	}
+}

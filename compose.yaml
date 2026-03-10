@@ -74,6 +74,7 @@ services:
       database:
         condition: service_healthy
     volumes:
+      - ./database/pgadmin/servers.json:/pgadmin4/servers.json:ro
       - pgadmin_data:/var/lib/pgadmin
 
 volumes:
