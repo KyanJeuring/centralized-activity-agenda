@@ -1,0 +1,144 @@
+.ca-events {
+  font-family: sans-serif;
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.ca-subtitle {
+  font-size: 13px;
+  color: #777;
+  margin-bottom: 20px;
+}
+
+.ca-month-group {
+  margin-bottom: 8px;
+}
+
+.ca-month-header {
+  font-size: 17px;
+  color: #333;
+  border-bottom: 2px solid #e0e0e0;
+  padding-bottom: 6px;
+  margin: 24px 0 10px;
+}
+
+.ca-event {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  background: #fff;
+  border-left-width: 4px;
+}
+
+.ca-color-ibdo {
+  border-left-color: #1a6b3c;
+}
+.ca-color-ibdo .ca-date-block {
+  background: #1a6b3c;
+}
+.ca-color-ibdo .ca-event-body h4 a {
+  color: #1a6b3c;
+}
+.ca-badge-ibdo {
+  background: #1a6b3c !important;
+}
+
+.ca-color-mica {
+  border-left-color: #f0c400;
+}
+.ca-color-mica .ca-date-block {
+  background: #222;
+}
+.ca-color-mica .ca-event-body h4 a {
+  color: #b38f00;
+}
+.ca-badge-mica {
+  background: #222 !important;
+  color: #f0c400 !important;
+}
+
+.ca-color-ynb {
+  border-left-color: #003580;
+}
+.ca-color-ynb .ca-date-block {
+  background: #003580;
+}
+.ca-color-ynb .ca-event-body h4 a {
+  color: #003580;
+}
+.ca-badge-ynb {
+  background: #003580 !important;
+}
+
+.ca-date-block {
+  min-width: 52px;
+  color: white;
+  border-radius: 6px;
+  text-align: center;
+  padding: 8px 4px;
+  flex-shrink: 0;
+}
+
+.ca-day {
+  display: block;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+.ca-month-short {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.ca-event-body {
+  flex: 1;
+}
+
+.ca-event-body h4 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.ca-event-body h4 a {
+  text-decoration: none;
+}
+.ca-event-body h4 a:hover {
+  text-decoration: underline;
+}
+
+.ca-event-meta {
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.ca-event-desc {
+  font-size: 13px;
+  color: #444;
+  margin-bottom: 4px;
+}
+
+.ca-event-url {
+  font-size: 12px;
+}
+.ca-event-url {
+  color: #777;
+}
+
+.ca-source-badge {
+  color: white;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  vertical-align: middle;
+  margin-left: 4px;
+}

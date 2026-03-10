@@ -37,4 +37,10 @@ out/
 # ==================================================
 # WordPress specific
 # ==================================================
-wp-content/**
+wp-content/languages
+wp-content/plugins/akismet
+wp-content/plugins/hello.php
+wp-content/plugins/index.php
+wp-content/themes
+wp-content/index.php
+wp-content/upgrade
