@@ -7,8 +7,15 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libzip-dev \
     zip \
-    && docker-php-ext-install pdo pdo_pgsql zip \
-    && rm -rf /var/lib/apt/lists/*
+    && docker-php-ext-install pdo pdo_pgsql zip opcache \
+    && rm -rf /var/lib/apt/lists/* \
+    && echo "opcache.enable=1" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.enable_cli=1" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.memory_consumption=128" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.interned_strings_buffer=8" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.max_accelerated_files=8000" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.validate_timestamps=1" >> /usr/local/etc/php/php.ini \
+    && echo "opcache.revalidate_freq=2" >> /usr/local/etc/php/php.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
