@@ -19,6 +19,12 @@ if [ ! -f "public/index.php" ]; then
     composer require nelmio/cors-bundle
 fi
 
+# On fresh clones vendor/ is absent because it's gitignored.
+if [ ! -f "vendor/autoload_runtime.php" ]; then
+    echo "Composer dependencies not found. Installing..."
+    composer install --no-interaction --prefer-dist
+fi
+
 echo "Starting Symfony server..."
 
 exec php -S 0.0.0.0:${BACKEND_PORT} -t public public/index.php
