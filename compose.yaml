@@ -18,25 +18,22 @@ services:
     depends_on:
       - backend
 
-  # PHP Backend API
+  # Symfony Backend API
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: php_backend
+    container_name: symfony_backend
     restart: unless-stopped
     working_dir: /var/www
-    command: php -S 0.0.0.0:${BACKEND_PORT} -t /var/www
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./backend:/var/www
     environment:
-      DB_HOST: database
-      DB_PORT: ${POSTGRES_PORT}
-      DB_DATABASE: ${POSTGRES_DB}
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKEND_PORT: ${BACKEND_PORT}
+      APP_ENV: dev
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?serverVersion=17&charset=utf8"
     depends_on:
       database:
         condition: service_healthy
