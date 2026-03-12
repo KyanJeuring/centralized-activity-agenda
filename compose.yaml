@@ -30,6 +30,8 @@ services:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
+      - backend_var:/var/www/var
     environment:
       BACKEND_PORT: ${BACKEND_PORT}
       APP_ENV: dev
@@ -77,3 +79,5 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  backend_vendor:
+  backend_var:

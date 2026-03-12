@@ -1,0 +1,4 @@
+backend/vendor/
+backend/var/cache/
+backend/var/log/
+frontend/node_modules/
