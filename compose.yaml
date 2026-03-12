@@ -18,12 +18,12 @@ services:
     depends_on:
       - backend
 
-  # Symfony Backend API
+  # Laravel Backend API
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: symfony_backend
+    container_name: laravel_backend
     restart: unless-stopped
     working_dir: /var/www
     ports:
@@ -31,11 +31,17 @@ services:
     volumes:
       - ./backend:/var/www
       - backend_vendor:/var/www/vendor
-      - backend_var:/var/www/var
+      - backend_storage:/var/www/storage
     environment:
       BACKEND_PORT: ${BACKEND_PORT}
-      APP_ENV: dev
-      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?serverVersion=17&charset=utf8"
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: "http://localhost:${BACKEND_PORT}"
+      POSTGRES_HOST: database
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       database:
         condition: service_healthy
@@ -80,4 +86,4 @@ volumes:
   postgres_data:
   pgadmin_data:
   backend_vendor:
-  backend_var:
+  backend_storage:

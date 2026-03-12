@@ -1,80 +1,86 @@
 {
+    "$schema": "https://getcomposer.org/schema.json",
+    "name": "laravel/laravel",
     "type": "project",
-    "license": "proprietary",
-    "minimum-stability": "stable",
-    "prefer-stable": true,
+    "description": "The skeleton application for the Laravel framework.",
+    "keywords": ["laravel", "framework"],
+    "license": "MIT",
     "require": {
-        "php": ">=8.2",
-        "ext-ctype": "*",
-        "ext-iconv": "*",
-        "doctrine/doctrine-bundle": "^2.18",
-        "doctrine/doctrine-migrations-bundle": "^3.7",
-        "doctrine/orm": "^3.6",
-        "phpdocumentor/reflection-docblock": "^6.0",
-        "phpstan/phpdoc-parser": "^2.3",
-        "symfony/console": "7.4.*",
-        "symfony/dotenv": "7.4.*",
-        "symfony/flex": "^2",
-        "symfony/framework-bundle": "7.4.*",
-        "symfony/property-access": "7.4.*",
-        "symfony/property-info": "7.4.*",
-        "symfony/runtime": "7.4.*",
-        "symfony/security-bundle": "7.4.*",
-        "symfony/serializer": "7.4.*",
-        "symfony/validator": "7.4.*",
-        "symfony/yaml": "7.4.*"
+        "php": "^8.2",
+        "laravel/framework": "^12.0",
+        "laravel/tinker": "^2.10.1"
     },
-    "config": {
-        "allow-plugins": {
-            "php-http/discovery": true,
-            "symfony/flex": true,
-            "symfony/runtime": true
-        },
-        "bump-after-update": true,
-        "sort-packages": true
+    "require-dev": {
+        "fakerphp/faker": "^1.23",
+        "laravel/pail": "^1.2.2",
+        "laravel/pint": "^1.24",
+        "laravel/sail": "^1.41",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "phpunit/phpunit": "^11.5.50"
     },
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "App\\": "app/",
+            "Database\\Factories\\": "database/factories/",
+            "Database\\Seeders\\": "database/seeders/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "App\\Tests\\": "tests/"
+            "Tests\\": "tests/"
         }
-    },
-    "replace": {
-        "symfony/polyfill-ctype": "*",
-        "symfony/polyfill-iconv": "*",
-        "symfony/polyfill-php72": "*",
-        "symfony/polyfill-php73": "*",
-        "symfony/polyfill-php74": "*",
-        "symfony/polyfill-php80": "*",
-        "symfony/polyfill-php81": "*",
-        "symfony/polyfill-php82": "*"
     },
     "scripts": {
-        "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
-        },
-        "post-install-cmd": [
-            "@auto-scripts"
+        "setup": [
+            "composer install",
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
+            "@php artisan key:generate",
+            "@php artisan migrate --force",
+            "npm install",
+            "npm run build"
+        ],
+        "dev": [
+            "Composer\\Config::disableProcessTimeout",
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+        ],
+        "test": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test"
+        ],
+        "post-autoload-dump": [
+            "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+            "@php artisan package:discover --ansi"
         ],
         "post-update-cmd": [
-            "@auto-scripts"
+            "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
+        ],
+        "post-root-package-install": [
+            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
+        ],
+        "post-create-project-cmd": [
+            "@php artisan key:generate --ansi",
+            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
+            "@php artisan migrate --graceful --ansi"
+        ],
+        "pre-package-uninstall": [
+            "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
         ]
     },
-    "conflict": {
-        "symfony/symfony": "*"
-    },
     "extra": {
-        "symfony": {
-            "allow-contrib": false,
-            "require": "7.4.*"
+        "laravel": {
+            "dont-discover": []
         }
     },
-    "require-dev": {
-        "symfony/maker-bundle": "*"
-    }
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist",
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
 }

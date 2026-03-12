@@ -1,13 +1,14 @@
-FROM php:8.3-cli
+FROM php:8.4-cli
 
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
+    libonig-dev \
     libpq-dev \
     libzip-dev \
     zip \
-    && docker-php-ext-install pdo pdo_pgsql zip opcache \
+    && docker-php-ext-install mbstring pdo pdo_pgsql zip opcache \
     && rm -rf /var/lib/apt/lists/* \
     && echo "opcache.enable=1" >> /usr/local/etc/php/php.ini \
     && echo "opcache.enable_cli=1" >> /usr/local/etc/php/php.ini \
