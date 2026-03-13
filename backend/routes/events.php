@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Throwable;
 
-Route::get('/api/test-endpoint', function () {
+Route::get('/api/v1/test-endpoint', function () {
     try {
         $result = DB::selectOne('SELECT current_database() AS database, current_user AS username');
 
