@@ -22,9 +22,8 @@
                 backendMessage.textContent = "Checking backend...";
 
                 try {
-                    const response = await fetch("http://localhost:8000", { method: "GET" });
-                    const data = await response.json();
-                    const message = data.message || "No message field in response.";
+                    const response = await fetch("http://localhost:8000/api/test-endpoint", { method: "GET" });
+                    const message = await response.text();
                     backendMessage.textContent = `Backend response: ${message}`;
                 } catch (error) {
                     backendMessage.textContent = "Backend request failed. Check if backend container is running on port 8000.";
