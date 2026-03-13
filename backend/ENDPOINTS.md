@@ -4,7 +4,7 @@ This document describes the REST API endpoints used to manage events.
 
 Base path:
 
-`/api/events`
+`/api/v1/events`
 
 ---
 
@@ -12,37 +12,37 @@ Base path:
 
 | Method | Endpoint                 | Description                       |
 | ------ | ------------------------ |-----------------------------------|
-| GET    | /api/events              | Get all events                    |
-| GET    | /api/events/{id}         | Get a specific event              |
-| GET    | /api/events/upcoming     | Get all upcoming events           |
-| GET    | /api/events/past         | Get all past events               |
-| POST   | /api/events              | Create a new event                |
-| PUT    | /api/events/{id}         | Update a specific event           |
-| PATCH  | /api/events/{id}         | Partially update a specific event |
-| PATCH  | /api/events/{id}/cancel  | Cancel a specific event           |
-| DELETE | /api/events/{id}         | Delete a specific event           |
+| GET    | /api/v1/events              | Get all events                    |
+| GET    | /api/v1/events/{id}         | Get a specific event              |
+| GET    | /api/v1/events/upcoming     | Get all upcoming events           |
+| GET    | /api/v1/events/past         | Get all past events               |
+| POST   | /api/v1/events              | Create a new event                |
+| PUT    | /api/v1/events/{id}         | Update a specific event           |
+| PATCH  | /api/v1/events/{id}         | Partially update a specific event |
+| PATCH  | /api/v1/events/{id}/cancel  | Cancel a specific event           |
+| DELETE | /api/v1/events/{id}         | Delete a specific event           |
 
 ---
 
 ## GET Endpoints
 
 ### Get all events
-`GET /api/events`
+`GET /api/v1/events`
 
 Returns all events.
 
 ### Get a specific event
-`GET /api/events/{id}`
+`GET /api/v1/events/{id}`
 
 Returns one specific event by ID.
 
 ### Get upcoming events
-`GET /api/events/upcoming`
+`GET /api/v1/events/upcoming`
 
 Returns all upcoming events.
 
 ### Get past events
-`GET /api/events/past`
+`GET /api/v1/events/past`
 
 Returns all past events.
 
@@ -51,7 +51,7 @@ Returns all past events.
 ## POST Endpoints
 
 ### Create event
-`POST /api/events`
+`POST /api/v1/events`
 
 Creates a new event.
 
@@ -72,13 +72,13 @@ Creates a new event.
 
 ### Update a specific event
 
-`PUT /api/events/{id}`
+`PUT /api/v1/events/{id}`
 
 Updates the full event.
 
 ### Example
 
-`PUT /api/events/15`
+`PUT /api/v1/events/15`
 
 #### Example request body
 ```json
@@ -98,13 +98,13 @@ Updates the full event.
 
 ### Partially update a specific event
 
-`PATCH /api/events/{id}`
+`PATCH /api/v1/events/{id}`
 
 Updates only specific fields of an event.
 
 ### Example
 
-`PATCH /api/events/15`
+`PATCH /api/v1/events/15`
 
 #### Example request body
 
@@ -116,13 +116,13 @@ Updates only specific fields of an event.
 
 ### Cancel a specific event
 
-`PATCH /api/events/{id}/cancel`
+`PATCH /api/v1/events/{id}/cancel`
 
 Marks an event as cancelled.
 
 ### Example
 
-`PATCH /api/events/15/cancel`
+`PATCH /api/v1/events/15/cancel`
 
 ---
 
@@ -130,12 +130,12 @@ Marks an event as cancelled.
 
 ### Delete a specific event
 
-`DELETE /api/events/{id}`
+`DELETE /api/v1/events/{id}`
 
 Deletes the event with the given ID.
 
 ### Example
 
-`DELETE /api/events/15`
+`DELETE /api/v1/events/15`
 
 ---
