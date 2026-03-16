@@ -1,0 +1,48 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: linear-gradient(145deg, #e9f4ff, #f6fff2);
+}
+
+.card {
+  width: min(100%, 640px);
+  background: #ffffff;
+  border: 1px solid #dce9db;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 12px 32px rgba(7, 23, 40, 0.08);
+}
+
+h1 {
+  margin-top: 0;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  background: #115e59;
+  color: #fff;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
