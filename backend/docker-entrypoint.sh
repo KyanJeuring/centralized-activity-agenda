@@ -36,6 +36,12 @@ if [ ! -f ".env" ]; then
     cp .env.example .env
 fi
 
+# Ensure appends don't concatenate onto the last existing line when
+# .env lacks a trailing newline.
+if [ -f ".env" ] && [ -n "$(tail -c 1 .env)" ]; then
+    echo >> .env
+fi
+
 # Patch .env with values from Docker environment variables so that
 # the PHP built-in server (used by artisan serve) reads the correct
 # settings from .env, regardless of what .env.example defaults to.
