@@ -6,9 +6,10 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libonig-dev \
     libpq-dev \
+    libsqlite3-dev \
     libzip-dev \
     zip \
-    && docker-php-ext-install mbstring pdo pdo_pgsql zip opcache \
+    && docker-php-ext-install mbstring pdo pdo_pgsql pdo_sqlite zip opcache \
     && rm -rf /var/lib/apt/lists/* \
     && echo "opcache.enable=1" >> /usr/local/etc/php/php.ini \
     && echo "opcache.enable_cli=1" >> /usr/local/etc/php/php.ini \

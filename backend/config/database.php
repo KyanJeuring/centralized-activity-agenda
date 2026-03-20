@@ -1,9 +1,16 @@
 <?php
 
 return [
-    'default' => 'pgsql',
+    'default' => env('DB_CONNECTION', 'pgsql'),
 
     'connections' => [
+        'sqlite' => [
+            'driver' => 'sqlite',
+            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'prefix' => '',
+            'foreign_key_constraints' => true,
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'host' => env('POSTGRES_HOST'),
