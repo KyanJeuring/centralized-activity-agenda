@@ -10,7 +10,7 @@ $$;
 
 -- Tables
 
-CREATE TABLE IF NOT EXISTS 'clubs' (
+CREATE TABLE IF NOT EXISTS clubs (
     id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL, 
     source TEXT NOT NULL,
