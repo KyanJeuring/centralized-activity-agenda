@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from "vue";
+import Navbar from './components/Navbar.vue';
 
 const backendMessage = ref("");
 const isLoading = ref(false);
@@ -22,16 +23,8 @@ async function testBackend() {
 </script>
 
 <template>
-  <main class="page">
-    <section class="card">
-      <h1>Vue Test Page</h1>
-      <p>If you see this page, the Vue frontend is running inside Docker.</p>
-
-      <button type="button" :disabled="isLoading" @click="testBackend">
-        {{ isLoading ? "Checking backend..." : "Test Backend" }}
-      </button>
-
-      <p>{{ backendMessage }}</p>
-    </section>
+  <Navbar />
+  <main class="main-content">
+    <router-view />
   </main>
 </template>
