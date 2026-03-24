@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('api/v1')->group(function () {
     Route::get('test-endpoint', [EventController::class, 'testEndpoint']);
     Route::get('events', [EventController::class, 'index']);
-    Route::get('events/upcoming', [EventController::class, 'upcoming']);
+    Route::get('events/all', [EventController::class, 'all']);
     Route::get('events/past', [EventController::class, 'past']);
     Route::get('events/{id}', [EventController::class, 'show'])->whereUuid('id');
     Route::post('events', [EventController::class, 'store']);

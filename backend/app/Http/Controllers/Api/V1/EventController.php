@@ -33,32 +33,18 @@ class EventController extends Controller
 
     #[OA\Get(
         path: '/v1/events',
-        operationId: 'getEvents',
-        tags: ['Events'],
-        summary: 'Get all events',
-        responses: [
-            new OA\Response(
-                response: 200,
-                description: 'List of events',
-                content: new OA\JsonContent(type: 'array', items: new OA\Items(type: 'object'))
-            ),
-        ]
-    )]
-    public function index()
-    {
-        $events = DB::table('vw_events_all')
-            ->orderByRaw('start_date IS NULL, start_date ASC')
-            ->orderByDesc('created_at')
-            ->get();
-
-        return response()->json($events, Response::HTTP_OK);
-    }
-
-    #[OA\Get(
-        path: '/v1/events/upcoming',
         operationId: 'getUpcomingEvents',
         tags: ['Events'],
         summary: 'Get upcoming events',
+        parameters: [
+            new OA\Parameter(
+                name: 'search',
+                in: 'query',
+                required: false,
+                description: 'Case-insensitive search across name, organizer, description, location, url, and app_name',
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
         responses: [
             new OA\Response(
                 response: 200,
@@ -67,9 +53,49 @@ class EventController extends Controller
             ),
         ]
     )]
-    public function upcoming()
+    public function index(Request $request)
     {
-        $events = DB::table('vw_events_upcoming')
+        $query = DB::table('vw_events_upcoming');
+
+        $this->applySearchFilter($query, $request->query('search'));
+
+        $events = $query
+            ->orderByRaw('start_date IS NULL, start_date ASC')
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json($events, Response::HTTP_OK);
+    }
+
+    #[OA\Get(
+        path: '/v1/events/all',
+        operationId: 'getAllEvents',
+        tags: ['Events'],
+        summary: 'Get all events',
+        parameters: [
+            new OA\Parameter(
+                name: 'search',
+                in: 'query',
+                required: false,
+                description: 'Case-insensitive search across name, organizer, description, location, url, and app_name',
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'List of all events',
+                content: new OA\JsonContent(type: 'array', items: new OA\Items(type: 'object'))
+            ),
+        ]
+    )]
+    public function all(Request $request)
+    {
+        $query = DB::table('vw_events_all');
+
+        $this->applySearchFilter($query, $request->query('search'));
+
+        $events = $query
             ->orderBy('start_date')
             ->orderByDesc('created_at')
             ->get();
@@ -82,6 +108,15 @@ class EventController extends Controller
         operationId: 'getPastEvents',
         tags: ['Events'],
         summary: 'Get past events',
+        parameters: [
+            new OA\Parameter(
+                name: 'search',
+                in: 'query',
+                required: false,
+                description: 'Case-insensitive search across name, organizer, description, location, url, and app_name',
+                schema: new OA\Schema(type: 'string')
+            ),
+        ],
         responses: [
             new OA\Response(
                 response: 200,
@@ -90,9 +125,13 @@ class EventController extends Controller
             ),
         ]
     )]
-    public function past()
+    public function past(Request $request)
     {
-        $events = DB::table('vw_events_past')
+        $query = DB::table('vw_events_past');
+
+        $this->applySearchFilter($query, $request->query('search'));
+
+        $events = $query
             ->orderByDesc('start_date')
             ->orderByDesc('created_at')
             ->get();
@@ -443,5 +482,26 @@ class EventController extends Controller
         return response()->json([
             'message' => 'Event deleted successfully.',
         ], Response::HTTP_OK);
+    }
+
+    private function applySearchFilter($query, ?string $search): void
+    {
+        $term = trim((string) $search);
+
+        if ($term === '') {
+            return;
+        }
+
+        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], Str::lower($term));
+        $pattern = "%{$escaped}%";
+
+        $query->where(function ($subQuery) use ($pattern) {
+            $subQuery->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereRaw("LOWER(organizer) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereRaw("LOWER(description) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereRaw("LOWER(location) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereRaw("LOWER(url) LIKE ? ESCAPE '!'", [$pattern])
+                ->orWhereRaw("LOWER(app_name) LIKE ? ESCAPE '!'", [$pattern]);
+        });
     }
 }
