@@ -257,14 +257,13 @@ class EventController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['organizer', 'description', 'url', 'app_id'],
+                required: ['organizer', 'description', 'url'],
                 properties: [
                     new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'title', type: 'string'),
                     new OA\Property(property: 'organizer', type: 'string'),
                     new OA\Property(property: 'description', type: 'string'),
                     new OA\Property(property: 'url', type: 'string'),
-                    new OA\Property(property: 'app_id', type: 'string', format: 'uuid'),
                     new OA\Property(property: 'start_date', type: 'string', format: 'date-time', nullable: true),
                     new OA\Property(property: 'location', type: 'string', nullable: true),
                     new OA\Property(property: 'img', type: 'string', nullable: true),
@@ -296,12 +295,6 @@ class EventController extends Controller
 
         $data = $request->validated();
 
-        if (! $this->isOwnedClub($data['app_id'], $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to move this event to that club.',
-            ], Response::HTTP_FORBIDDEN);
-        }
-
         try {
             $result = DB::selectOne(
                 'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
@@ -314,7 +307,7 @@ class EventController extends Controller
                     $data['location'] ?? null,
                     $data['url'],
                     $data['img'] ?? null,
-                    $data['app_id'],
+                    $event->app_id,
                 ]
             );
         } catch (QueryException $exception) {

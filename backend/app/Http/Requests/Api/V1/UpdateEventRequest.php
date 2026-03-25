@@ -24,7 +24,7 @@ class UpdateEventRequest extends FormRequest
     {
         return [
             'id' => 'prohibited',
-            'app_id' => 'required', // We might need app_id here based on previous controller code, let's keep the core ones
+            'app_id' => 'prohibited',
             'name' => 'required_without:title|string',
             'title' => 'required_without:name|string',
             'organizer' => 'required|string',

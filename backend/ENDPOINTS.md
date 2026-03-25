@@ -47,6 +47,29 @@ GET /api/v1/events?search=hackathon
 
 ---
 
+## Response Fields
+
+Event responses include:
+
+- id
+- name
+- organizer
+- start_date
+- description
+- location
+- url
+- app_id
+- app_name
+- app_source
+- app_type
+- img
+- is_cancelled
+- created_at
+- updated_at
+- tags (only on detail response)
+
+---
+
 ## GET Endpoints
 
 ### Get all events
@@ -62,12 +85,16 @@ Returns one specific event by ID.
 ### Get upcoming events
 GET /api/v1/events
 
-Returns all upcoming events.
+Returns events with start_date today or later.
 
 ### Get past events
 GET /api/v1/events/past
 
 Returns all past events.
+
+Note:
+
+- List endpoints return paginated results.
 
 ---
 
@@ -78,6 +105,13 @@ POST /api/v1/events
 
 Creates a new event.
 
+Rules:
+
+- Requires authenticated user.
+- Event is created in the authenticated user's owned club.
+- id and app_id are not accepted in request body.
+- Either name or title is required.
+
 Example request body:
 ```json
 {
@@ -85,7 +119,6 @@ Example request body:
   "organizer": "Student Affairs",
   "description": "Campus open day for new students",
   "url": "https://example.edu/open-day",
-  "app_id": "11111111-1111-1111-1111-111111111111",
   "start_date": "2026-03-20",
   "location": "Main Building",
   "img": "https://example.edu/open-day.jpg"
@@ -101,6 +134,14 @@ PUT /api/v1/events/{id}
 
 Updates the full event.
 
+Rules:
+
+- Requires authenticated user.
+- Caller must own the event.
+- app_id is not accepted in request body.
+- PUT keeps the event in its current app/club.
+- Either name or title is required.
+
 Example request body:
 ```json
 {
@@ -108,7 +149,6 @@ Example request body:
   "organizer": "Student Affairs",
   "description": "Updated description",
   "url": "https://example.edu/open-day-updated",
-  "app_id": "11111111-1111-1111-1111-111111111111",
   "start_date": "2026-03-21",
   "location": "Conference Hall",
   "img": "https://example.edu/open-day-updated.jpg"
@@ -134,7 +174,12 @@ Example request body:
 ### Cancel a specific event
 PATCH /api/v1/events/{id}/cancel
 
-Marks an event as cancelled.
+Marks an event as cancelled by setting is_cancelled to true.
+
+Rules:
+
+- Requires authenticated user.
+- Caller must own the event.
 
 ---
 
@@ -144,3 +189,8 @@ Marks an event as cancelled.
 DELETE /api/v1/events/{id}
 
 Deletes the event with the given ID.
+
+Rules:
+
+- Requires authenticated user.
+- Caller must own the event.
