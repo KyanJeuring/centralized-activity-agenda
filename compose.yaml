@@ -30,6 +30,7 @@ services:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./backend:/var/www
+      - ./database/sql:/var/www/database_sql:ro
       - backend_vendor:/var/www/vendor
       - backend_storage:/var/www/storage
     environment:
@@ -59,10 +60,6 @@ services:
       - "${POSTGRES_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/sql/tables.sql:/docker-entrypoint-initdb.d/01_tables.sql:ro
-      - ./database/sql/views.sql:/docker-entrypoint-initdb.d/02_views.sql:ro
-      - ./database/sql/test_data.sql:/docker-entrypoint-initdb.d/03_test_data.sql:ro
-      - ./database/sql/sp.sql:/docker-entrypoint-initdb.d/03_sp.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
       interval: 5s

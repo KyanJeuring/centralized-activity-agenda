@@ -16,7 +16,10 @@ CREATE TABLE IF NOT EXISTS clubs (
     source TEXT NOT NULL,
     issued_key TEXT,
     received_key TEXT,
-    type club_type_enum NOT NULL
+    type club_type_enum NOT NULL,
+    owner_user_id BIGINT NOT NULL,
+    CONSTRAINT clubs_owner_user_id_foreign
+        FOREIGN KEY (owner_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS events (

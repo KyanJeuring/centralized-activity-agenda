@@ -28,14 +28,16 @@ SELECT
 	event.location,
 	event.url,
 	event.app_id,
-	c.name AS app_name,
+	COALESCE(u.name, c.name) AS app_name,
 	c.source AS app_source,
 	c.type AS app_type,
+	c.owner_user_id,
 	event.img,
 	event.created_at,
 	event.updated_at
 FROM events event
-JOIN clubs c ON c.id = event.app_id;
+JOIN clubs c ON c.id = event.app_id
+LEFT JOIN users u ON u.id = c.owner_user_id;
 
 -- =============================================================================
 -- Event timeline slices
@@ -89,9 +91,10 @@ SELECT
 	event.location,
 	event.url,
 	event.app_id,
-	c.name AS app_name,
+	COALESCE(u.name, c.name) AS app_name,
 	c.source AS app_source,
 	c.type AS app_type,
+	c.owner_user_id,
 	event.img,
 	event.created_at,
 	event.updated_at,
@@ -102,6 +105,7 @@ SELECT
 	) AS tags
 FROM events event
 JOIN clubs c ON c.id = event.app_id
+LEFT JOIN users u ON u.id = c.owner_user_id
 LEFT JOIN event_tag et ON et.event_id = event.id
 LEFT JOIN tags t ON t.id = et.tag_id
-GROUP BY event.id, c.id;
+GROUP BY event.id, c.id, u.id;

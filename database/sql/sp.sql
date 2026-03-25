@@ -95,8 +95,28 @@ CREATE OR REPLACE FUNCTION sp_create_club(
 ) RETURNS UUID AS $$
 DECLARE
     v_id UUID;
+    v_owner_user_id BIGINT;
+    v_service_email TEXT;
 BEGIN
     v_id := COALESCE(p_id, sp_generate_uuid());
+    v_service_email := 'club+' || REPLACE(v_id::TEXT, '-', '') || '@club.local';
+
+    SELECT id INTO v_owner_user_id
+    FROM users
+    WHERE email = v_service_email
+    LIMIT 1;
+
+    IF v_owner_user_id IS NULL THEN
+        INSERT INTO users(name, email, password, created_at, updated_at)
+        VALUES (
+            COALESCE(NULLIF(TRIM(p_name), ''), 'Club Owner'),
+            v_service_email,
+            '$2y$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+            NOW(),
+            NOW()
+        )
+        RETURNING id INTO v_owner_user_id;
+    END IF;
 
     IF EXISTS (
         SELECT 1
@@ -107,8 +127,8 @@ BEGIN
         RAISE EXCEPTION 'Club with name "%" and source "%" already exists', p_name, p_source;
     END IF;
 
-    INSERT INTO clubs(id, name, source, issued_key, received_key, type)
-    VALUES (v_id, p_name, p_source, p_issued_key, p_received_key, p_type);
+    INSERT INTO clubs(id, name, source, issued_key, received_key, type, owner_user_id)
+    VALUES (v_id, p_name, p_source, p_issued_key, p_received_key, p_type, v_owner_user_id);
 
     RETURN v_id;
 END;
@@ -183,7 +203,7 @@ BEGIN
         e.location,
         e.url,
         e.app_id,
-        c.name AS app_name,
+        COALESCE(u.name, c.name) AS app_name,
         c.source AS app_source,
         c.type AS app_type,
         e.img,
@@ -191,6 +211,7 @@ BEGIN
         e.updated_at
     FROM events e
     JOIN clubs c ON c.id = e.app_id
+    LEFT JOIN users u ON u.id = c.owner_user_id
     WHERE p_app_id IS NULL OR e.app_id = p_app_id
     ORDER BY e.start_date NULLS LAST, e.created_at DESC;
 END;
@@ -229,7 +250,7 @@ BEGIN
         e.location,
         e.url,
         e.app_id,
-        c.name AS app_name,
+        COALESCE(u.name, c.name) AS app_name,
         c.source AS app_source,
         c.type AS app_type,
         e.img,
@@ -242,10 +263,11 @@ BEGIN
         ) AS tags
     FROM events e
     JOIN clubs c ON c.id = e.app_id
+    LEFT JOIN users u ON u.id = c.owner_user_id
     LEFT JOIN event_tag et ON et.event_id = e.id
     LEFT JOIN tags t ON t.id = et.tag_id
     WHERE e.id = p_event_id
-    GROUP BY e.id, c.id;
+    GROUP BY e.id, c.id, u.id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -475,10 +497,11 @@ BEGIN
         s.id,
         s.raw_data,
         s.app_id,
-        c.name AS app_name,
+        COALESCE(u.name, c.name) AS app_name,
         s.created_at
     FROM staging s
     JOIN clubs c ON c.id = s.app_id
+    LEFT JOIN users u ON u.id = c.owner_user_id
     WHERE s.app_id = p_app_id
     ORDER BY s.created_at DESC
     LIMIT GREATEST(0, LEAST(p_limit, 1000));
