@@ -315,10 +315,18 @@ class EventController extends Controller
     )]
     public function update(Request $request, string $id)
     {
+        $userId = $this->authenticatedUserId($request);
+
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (! $this->isOwnedEvent($id, $userId)) {
+            return response()->json([
+                'message' => 'You are not allowed to update this event.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = $request->validate([
@@ -332,6 +340,12 @@ class EventController extends Controller
             'location' => 'nullable|string',
             'img' => 'nullable|string',
         ]);
+
+        if (! $this->isOwnedClub($data['app_id'], $userId)) {
+            return response()->json([
+                'message' => 'You are not allowed to move this event to that club.',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         DB::table('events')
             ->where('id', $id)
@@ -365,10 +379,18 @@ class EventController extends Controller
     )]
     public function cancel(Request $request, string $id)
     {
+        $userId = $this->authenticatedUserId($request);
+
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (! $this->isOwnedEvent($id, $userId)) {
+            return response()->json([
+                'message' => 'You are not allowed to cancel this event.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         DB::transaction(function () use ($id) {
@@ -442,10 +464,18 @@ class EventController extends Controller
     )]
     public function partialUpdate(Request $request, string $id)
     {
+        $userId = $this->authenticatedUserId($request);
+
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (! $this->isOwnedEvent($id, $userId)) {
+            return response()->json([
+                'message' => 'You are not allowed to update this event.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = $request->validate([
@@ -526,10 +556,18 @@ class EventController extends Controller
     )]
     public function destroy(Request $request, string $id)
     {
+        $userId = $this->authenticatedUserId($request);
+
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if (! $this->isOwnedEvent($id, $userId)) {
+            return response()->json([
+                'message' => 'You are not allowed to delete this event.',
+            ], Response::HTTP_FORBIDDEN);
         }
 
         DB::transaction(function () use ($id) {
@@ -562,5 +600,27 @@ class EventController extends Controller
                 ->orWhereRaw("LOWER(url) LIKE ? ESCAPE '!'", [$pattern])
                 ->orWhereRaw("LOWER(app_name) LIKE ? ESCAPE '!'", [$pattern]);
         });
+    }
+
+    private function authenticatedUserId(Request $request): int
+    {
+        return (int) $request->user()->id;
+    }
+
+    private function isOwnedClub(string $clubId, int $userId): bool
+    {
+        return DB::table('clubs')
+            ->where('id', $clubId)
+            ->where('owner_user_id', $userId)
+            ->exists();
+    }
+
+    private function isOwnedEvent(string $eventId, int $userId): bool
+    {
+        return DB::table('events as e')
+            ->join('clubs as c', 'c.id', '=', 'e.app_id')
+            ->where('e.id', $eventId)
+            ->where('c.owner_user_id', $userId)
+            ->exists();
     }
 }
