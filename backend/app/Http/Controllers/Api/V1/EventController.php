@@ -3,17 +3,15 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Models\Event;
-use App\Models\Club;
 use App\Http\Requests\Api\V1\StoreEventRequest;
 use App\Http\Requests\Api\V1\UpdateEventRequest;
 use App\Http\Resources\Api\V1\EventResource;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Throwable;
 
@@ -62,7 +60,7 @@ class EventController extends Controller
     )]
     public function index(Request $request)
     {
-        $query = Event::where('start_date', '>=', now())->orWhereNull('start_date');
+        $query = DB::table('vw_events_upcoming');
 
         $this->applySearchFilter($query, $request->query('search'));
 
@@ -98,12 +96,12 @@ class EventController extends Controller
     )]
     public function all(Request $request)
     {
-        $query = Event::query()->with('club');
+        $query = DB::table('vw_events_all');
 
         $this->applySearchFilter($query, $request->query('search'));
 
         $events = $query
-            ->orderBy('start_date')
+            ->orderByRaw('start_date IS NULL, start_date ASC')
             ->orderByDesc('created_at')
             ->cursorPaginate(50);
 
@@ -134,7 +132,7 @@ class EventController extends Controller
     )]
     public function past(Request $request)
     {
-        $query = Event::with('club')->whereNotNull('start_date')->where('start_date', '<', now());
+        $query = DB::table('vw_events_past');
 
         $this->applySearchFilter($query, $request->query('search'));
 
@@ -161,7 +159,7 @@ class EventController extends Controller
     )]
     public function show(string $id)
     {
-        $event = Event::with('club')->find($id);
+        $event = DB::table('vw_event_details')->where('id', $id)->first();
 
         if (! $event) {
             return response()->json([
@@ -202,7 +200,7 @@ class EventController extends Controller
     {
         $userId = $this->authenticatedUserId($request);
         $data = $request->validated();
-        
+
         $ownedClubId = $this->resolveDefaultOwnedClubId($userId);
 
         if ($ownedClubId === null) {
@@ -211,18 +209,39 @@ class EventController extends Controller
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $event = Event::create([
-            'app_id' => $ownedClubId,
-            'name' => $data['name'] ?? $data['title'],
-            'organizer' => $data['organizer'],
-            'description' => $data['description'],
-            'url' => $data['url'],
-            'start_date' => $data['start_date'] ?? null,
-            'location' => $data['location'] ?? null,
-            'img' => $data['img'] ?? null,
-        ]);
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?) AS event_id',
+                [
+                    $ownedClubId,
+                    $data['name'] ?? $data['title'],
+                    $data['organizer'],
+                    $data['description'],
+                    $data['url'],
+                    $this->toDatabaseDate($data['start_date'] ?? null),
+                    $data['location'] ?? null,
+                    $data['img'] ?? null,
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
-        $event->load('club');
+        $eventId = isset($result->event_id) ? (string) $result->event_id : null;
+
+        if (! $eventId) {
+            return response()->json([
+                'message' => 'Event could not be created.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $event = DB::table('vw_event_details')->where('id', $eventId)->first();
+
+        if (! $event) {
+            return response()->json([
+                'message' => 'Event created but could not be loaded.',
+            ], Response::HTTP_CREATED);
+        }
 
         return response()->json(new EventResource($event), Response::HTTP_CREATED);
     }
@@ -261,7 +280,7 @@ class EventController extends Controller
     public function update(UpdateEventRequest $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
-        $event = Event::find($id);
+        $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
             return response()->json([
@@ -283,16 +302,30 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $event->update([
-            'name' => $data['name'] ?? $data['title'],
-            'organizer' => $data['organizer'],
-            'start_date' => $data['start_date'] ?? null,
-            'description' => $data['description'],
-            'location' => $data['location'] ?? null,
-            'url' => $data['url'],
-            'app_id' => $data['app_id'],
-            'img' => $data['img'] ?? null,
-        ]);
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
+                [
+                    $id,
+                    $data['name'] ?? $data['title'],
+                    $data['organizer'],
+                    $this->toDatabaseDate($data['start_date'] ?? null),
+                    $data['description'],
+                    $data['location'] ?? null,
+                    $data['url'],
+                    $data['img'] ?? null,
+                    $data['app_id'],
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $this->postgresBool($result->updated ?? false)) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -326,38 +359,17 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        DB::transaction(function () use ($id) {
-            $tagId = DB::table('tags')
-                ->whereRaw('LOWER(slug) = ?', ['cancelled'])
-                ->value('id');
+        try {
+            $result = DB::selectOne('SELECT sp_cancel_event(?, ?) AS cancelled', [$id, true]);
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
-            if (! $tagId) {
-                $nextId = (DB::table('tags')->max('id') ?? 0) + 1;
-                DB::table('tags')->insert([
-                    'id' => $nextId,
-                    'slug' => 'cancelled',
-                ]);
-                $tagId = $nextId;
-            }
-
-            $alreadyTagged = DB::table('event_tag')
-                ->where('event_id', $id)
-                ->where('tag_id', $tagId)
-                ->exists();
-
-            if (! $alreadyTagged) {
-                $nextRelationId = (DB::table('event_tag')->max('id') ?? 0) + 1;
-                DB::table('event_tag')->insert([
-                    'id' => $nextRelationId,
-                    'event_id' => $id,
-                    'tag_id' => $tagId,
-                ]);
-            }
-
-            DB::table('events')
-                ->where('id', $id)
-                ->update(['updated_at' => now()]);
-        });
+        if (! $this->postgresBool($result->cancelled ?? false)) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json([
             'message' => 'Event cancelled successfully.',
@@ -398,7 +410,7 @@ class EventController extends Controller
     public function partialUpdate(Request $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
-        $event = Event::find($id);
+        $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
             return response()->json([
@@ -449,7 +461,34 @@ class EventController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $event->update($updates);
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
+                [
+                    $id,
+                    $updates['name'] ?? null,
+                    $updates['organizer'] ?? null,
+                    $this->toDatabaseDate($updates['start_date'] ?? null),
+                    $updates['description'] ?? null,
+                    $updates['location'] ?? null,
+                    $updates['url'] ?? null,
+                    $updates['img'] ?? null,
+                    $updates['app_id'] ?? null,
+                ]
+            );
+
+            if (array_key_exists('start_date', $updates) && $updates['start_date'] === null) {
+                DB::table('events')->where('id', $id)->update(['start_date' => null, 'updated_at' => now()]);
+            }
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $this->postgresBool($result->updated ?? false)) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -470,7 +509,7 @@ class EventController extends Controller
     public function destroy(Request $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
-        $event = Event::find($id);
+        $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
             return response()->json([
@@ -484,11 +523,17 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        DB::transaction(function () use ($event) {
-            DB::table('event_tag')->where('event_id', $event->id)->delete();
-            DB::table('ext_int_ids')->where('event_id', $event->id)->delete();
-            $event->delete();
-        });
+        try {
+            $result = DB::selectOne('SELECT sp_delete_event(?) AS deleted', [$id]);
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $this->postgresBool($result->deleted ?? false)) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json([
             'message' => 'Event deleted successfully.',
@@ -503,18 +548,16 @@ class EventController extends Controller
             return;
         }
 
-        $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], Str::lower($term));
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], Str::lower($term));
         $pattern = "%{$escaped}%";
 
         $query->where(function ($subQuery) use ($pattern) {
-            $subQuery->where(DB::raw("LOWER(events.name)"), 'LIKE', $pattern)
-                ->orWhere(DB::raw("LOWER(events.organizer)"), 'LIKE', $pattern)
-                ->orWhere(DB::raw("LOWER(events.description)"), 'LIKE', $pattern)
-                ->orWhere(DB::raw("LOWER(events.location)"), 'LIKE', $pattern)
-                ->orWhere(DB::raw("LOWER(events.url)"), 'LIKE', $pattern)
-                ->orWhereHas('club', function ($q) use ($pattern) {
-                    $q->where(DB::raw("LOWER(clubs.name)"), 'LIKE', $pattern);
-                });
+            $subQuery->whereRaw("LOWER(COALESCE(name, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(organizer, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(url, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(app_name, '')) LIKE ? ESCAPE '\\\\'", [$pattern]);
         });
     }
 
@@ -548,5 +591,27 @@ class EventController extends Controller
             ->value('id');
 
         return $clubId ? (string) $clubId : null;
+    }
+
+    private function toDatabaseDate(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        try {
+            return Carbon::parse((string) $value)->toDateString();
+        } catch (Throwable) {
+            return (string) $value;
+        }
+    }
+
+    private function postgresBool(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        return in_array((string) $value, ['t', 'true', '1'], true);
     }
 }

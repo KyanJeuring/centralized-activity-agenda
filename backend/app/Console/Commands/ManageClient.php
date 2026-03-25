@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 
 class ManageClient extends Command
 {
+    // Example: php artisan client:manage api.client@example.com
     /**
      * The name and signature of the console command.
      *

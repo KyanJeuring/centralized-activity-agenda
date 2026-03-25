@@ -12,8 +12,8 @@ Base path:
 
 | Method | Endpoint                   | Description                       |
 | ------ | -------------------------- | --------------------------------- |
-| GET    | /api/v1/events             | Get all events                    |
-| GET    | /api/v1/events/upcoming    | Get upcoming events               |
+| GET    | /api/v1/events             | Get upcoming events               |
+| GET    | /api/v1/events/all         | Get all events                    |
 | GET    | /api/v1/events/past        | Get past events                   |
 | GET    | /api/v1/events/{id}        | Get a specific event              |
 | POST   | /api/v1/events             | Create a new event                |
@@ -29,7 +29,7 @@ Base path:
 Search is implemented as an optional query parameter on list endpoints:
 
 - `GET /api/v1/events?search={term}`
-- `GET /api/v1/events/upcoming?search={term}`
+- `GET /api/v1/events/all?search={term}`
 - `GET /api/v1/events/past?search={term}`
 
 Behavior:
@@ -50,7 +50,7 @@ GET /api/v1/events?search=hackathon
 ## GET Endpoints
 
 ### Get all events
-GET /api/v1/events
+GET /api/v1/events/all
 
 Returns all events.
 
@@ -60,7 +60,7 @@ GET /api/v1/events/{id}
 Returns one specific event by ID.
 
 ### Get upcoming events
-GET /api/v1/events/upcoming
+GET /api/v1/events
 
 Returns all upcoming events.
 

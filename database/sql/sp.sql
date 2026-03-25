@@ -21,6 +21,7 @@ DROP FUNCTION IF EXISTS sp_read_events(UUID);
 DROP FUNCTION IF EXISTS sp_read_event_details(UUID);
 DROP FUNCTION IF EXISTS sp_read_event_by_external_id(UUID, TEXT);
 DROP FUNCTION IF EXISTS sp_read_staging(UUID, INT);
+DROP FUNCTION IF EXISTS sp_cancel_event(UUID, BOOLEAN);
 
 -- =============================================================================
 -- Helpers
@@ -214,6 +215,7 @@ CREATE OR REPLACE FUNCTION sp_read_events(
     app_source TEXT,
     app_type club_type_enum,
     img TEXT,
+    is_cancelled BOOLEAN,
     created_at TIMESTAMP(0) WITH TIME ZONE,
     updated_at TIMESTAMP(0) WITH TIME ZONE
 ) AS $$
@@ -232,6 +234,7 @@ BEGIN
         c.source AS app_source,
         c.type AS app_type,
         e.img,
+        e.is_cancelled,
         e.created_at,
         e.updated_at
     FROM events e
@@ -260,6 +263,7 @@ CREATE OR REPLACE FUNCTION sp_read_event_details(
     app_source TEXT,
     app_type club_type_enum,
     img TEXT,
+    is_cancelled BOOLEAN,
     created_at TIMESTAMP(0) WITH TIME ZONE,
     updated_at TIMESTAMP(0) WITH TIME ZONE,
     tags JSONB
@@ -279,6 +283,7 @@ BEGIN
         c.source AS app_source,
         c.type AS app_type,
         e.img,
+        e.is_cancelled,
         e.created_at,
         e.updated_at,
         COALESCE(
@@ -460,6 +465,28 @@ BEGIN
         url = COALESCE(v_url, url),
         img = COALESCE(v_img, img),
         app_id = COALESCE(p_app_id, app_id),
+        updated_at = NOW()
+    WHERE id = p_event_id;
+
+    RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function: sp_cancel_event(p_event_id, p_is_cancelled)
+-- Purpose: Toggles event cancellation state.
+-- Returns: TRUE if updated, else FALSE
+CREATE OR REPLACE FUNCTION sp_cancel_event(
+    p_event_id UUID,
+    p_is_cancelled BOOLEAN DEFAULT TRUE
+) RETURNS BOOLEAN AS $$
+BEGIN
+    IF p_event_id IS NULL THEN
+        RAISE EXCEPTION 'Event id is required';
+    END IF;
+
+    UPDATE events
+    SET
+        is_cancelled = COALESCE(p_is_cancelled, TRUE),
         updated_at = NOW()
     WHERE id = p_event_id;
 

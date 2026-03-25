@@ -33,6 +33,7 @@ SELECT
 	c.type AS app_type,
 	c.owner_user_id,
 	event.img,
+	event.is_cancelled,
 	event.created_at,
 	event.updated_at
 FROM events event
@@ -96,6 +97,7 @@ SELECT
 	c.type AS app_type,
 	c.owner_user_id,
 	event.img,
+	event.is_cancelled,
 	event.created_at,
 	event.updated_at,
 	COALESCE(

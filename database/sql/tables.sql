@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS events (
     url TEXT NOT NULL,
     app_id UUID NOT NULL,
     img TEXT NULL,
+    is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP(0) WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP(0) WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT events_app_id_foreign

@@ -14,21 +14,26 @@ class EventResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $appName = $this->app_name ?? $this->whenLoaded('club', fn () => $this->club->name);
+        $appSource = $this->app_source ?? $this->whenLoaded('club', fn () => $this->club->source);
+        $appType = $this->app_type ?? $this->whenLoaded('club', fn () => $this->club->type);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'organizer' => $this->organizer,
-            'start_date' => $this->start_date ? clone $this->start_date : null,
+            'start_date' => $this->start_date,
             'description' => $this->description,
             'location' => $this->location,
             'url' => $this->url,
             'app_id' => $this->app_id,
-            'app_name' => $this->whenLoaded('club', fn () => $this->club->name),
-            'app_source' => $this->whenLoaded('club', fn () => $this->club->source),
-            'app_type' => $this->whenLoaded('club', fn () => $this->club->type),
+            'app_name' => $appName,
+            'app_source' => $appSource,
+            'app_type' => $appType,
             'img' => $this->img,
-            'created_at' => $this->created_at ? clone $this->created_at : null,
-            'updated_at' => $this->updated_at ? clone $this->updated_at : null,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
+            'tags' => $this->tags ?? null,
         ];
     }
 }
