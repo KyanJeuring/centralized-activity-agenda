@@ -31,6 +31,7 @@ class EventResource extends JsonResource
             'app_source' => $appSource,
             'app_type' => $appType,
             'img' => $this->img,
+            'is_cancelled' => $this->is_cancelled,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'tags' => $this->tags ?? null,
