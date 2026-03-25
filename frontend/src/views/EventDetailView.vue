@@ -17,17 +17,12 @@ const event = computed(() =>
 const formattedDate = computed(() => {
   if (!event.value) return "";
 
-  return new Date(event.value.date).toLocaleDateString("nl-NL", {
+  return new Date(event.value.start_date).toLocaleDateString("nl-NL", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-});
-
-const bannerColour = computed(() => {
-  if (!event.value) return fallbackCategoryColor;
-  return categoryColors[event.value.category] || fallbackCategoryColor;
 });
 
 watchEffect(() => {
@@ -41,7 +36,7 @@ watchEffect(() => {
 
     <div class="detail-inner">
       <div class="detail-header">
-        <h1 class="event-title">{{ event.title }}</h1>
+        <h1 class="event-name">{{ event.name }}</h1>
         <p class="event-description">{{ event.description }}</p>
       </div>
 
@@ -49,12 +44,12 @@ watchEffect(() => {
         <p class="card-label">Event Organiser</p>
         <div class="organiser-info">
           <div class="organiser-logo" :style="{ backgroundColor: event.color }">
-            {{ event.organiser.charAt(0) }}
+            {{ event.organizer.charAt(0) }}
           </div>
           <div>
-            <p class="organiser-name">{{ event.organiser }}</p>
+            <p class="organiser-name">{{ event.organizer }}</p>
             <p class="organiser-location">{{ event.location }}</p>
-            <a :href="event.originalSource" target="_blank" class="visit-link">
+            <a :href="event.url" target="_blank" class="visit-link">
               Visit website &nearr;
             </a>
           </div>
@@ -65,16 +60,14 @@ watchEffect(() => {
         <div class="info-card">
           <p class="card-label">Date &amp; Time</p>
           <p class="info-value">{{ formattedDate }}</p>
-          <p class="info-sub">{{ event.startTime }} – {{ event.endTime }}</p>
         </div>
         <div class="info-card">
           <p class="card-label">Location</p>
           <p class="info-value">{{ event.location }}</p>
-          <p class="info-sub">{{ event.address }}</p>
         </div>
         <div class="info-card full-width">
           <p class="card-label">Original Source</p>
-          <a :href="event.originalSource" target="_blank" class="source-link">
+          <a :href="event.url" target="_blank" class="source-link">
             View on Hub Website
           </a>
         </div>
@@ -101,7 +94,7 @@ watchEffect(() => {
   flex-direction: column;
   gap: 1.25rem;
 }
-.event-title {
+.event-name {
   font-size: 1.8rem;
   font-weight: 800;
   color: #111827;
@@ -199,7 +192,7 @@ watchEffect(() => {
   .full-width {
     grid-column: auto;
   }
-  .event-title {
+  .event-name {
     font-size: 1.35rem;
   }
 }

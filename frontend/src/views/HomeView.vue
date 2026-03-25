@@ -6,6 +6,7 @@ import EventCard from "../components/EventCard.vue";
 const searchQuery = ref("");
 const selectedCity = ref("");
 const selectedCategory = ref("");
+const selectedDateRange = ref("");
 
 const cities = computed(() =>
   [...new Set(events.map((e) => e.location))].sort(),
@@ -72,6 +73,9 @@ function resetFilters() {
           >
             {{ category }}
           </option>
+        </select>
+        <select v-model="selectedDate" class="filter-select">
+          <option value="">All Dates</option>
         </select>
         <button class="reset-btn" @click="resetFilters">Reset</button>
       </div>

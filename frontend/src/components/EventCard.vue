@@ -15,29 +15,9 @@ const props = defineProps({
 
 const router = useRouter();
 
-function darkenHex(hex, amount = 0.15) {
-  const cleanHex = hex.replace("#", "");
-  if (cleanHex.length !== 6) return hex;
-
-  const r = parseInt(cleanHex.slice(0, 2), 16);
-  const g = parseInt(cleanHex.slice(2, 4), 16);
-  const b = parseInt(cleanHex.slice(4, 6), 16);
-
-  const darken = (channel) =>
-    Math.max(0, Math.min(255, Math.round(channel * (1 - amount))));
-
-  const toHex = (channel) => darken(channel).toString(16).padStart(2, "0");
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
-}
-
-const categoryColour = computed(
-  () => categoryColors[props.event.category] || fallbackCategoryColor,
-);
-const badgeColour = computed(() => darkenHex(categoryColour.value));
-
 // Format the date to weekday, day and month
 const formattedDate = computed(() => {
-  const d = new Date(props.event.date);
+  const d = new Date(props.event.start_date);
   const weekday = d.toLocaleDateString("nl-NL", { weekday: "long" });
   const day = d.getDate();
   const month = d.toLocaleDateString("nl-NL", { month: "long" });
@@ -53,6 +33,7 @@ function goToDetail() {
 <template>
   <div class="event-card">
     <div class="card-image" :style="{ backgroundColor: categoryColour }">
+      <img :src="event.img" alt="card-img" />
       <span class="category-badge" :style="{ backgroundColor: badgeColour }">
         {{ event.category }}
       </span>
@@ -61,17 +42,16 @@ function goToDetail() {
     <div class="card-body">
       <div class="organiser-row">
         <div class="organiser-avatar" :style="{ backgroundColor: event.color }">
-          {{ event.organiser.charAt(0) }}
+          {{ event.organizer.charAt(0) }}
         </div>
-        <span class="organiser-name">{{ event.organiser }}</span>
+        <span class="organiser-name">{{ event.organizer }}</span>
       </div>
 
-      <h3 class="card-title">{{ event.title }}</h3>
+      <h3 class="card-name">{{ event.name }}</h3>
 
       <div class="card-meta">
         <span class="meta-item">
-          {{ formattedDate }} . {{ event.startTime }} -
-          {{ event.endTime }}
+          {{ formattedDate }}
         </span>
         <span class="meta-item">{{ event.location }}</span>
       </div>
@@ -79,13 +59,24 @@ function goToDetail() {
       <div class="card-actions">
         <button class="view-btn" @click="goToDetail">See More</button>
         <a
-          :href="event.originalSource"
+          :href="event.url"
           target="_blank"
           rel="noopener noreferrer"
           class="external-link"
           title="Open original source"
-          >&nearr;</a
-        >
+          ><svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill="currentColor"
+            class="bi bi-arrow-up-right-square"
+            viewBox="0 0 16 16"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M15 2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1zM0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm5.854 8.803a.5.5 0 1 1-.708-.707L9.243 6H6.475a.5.5 0 1 1 0-1h3.975a.5.5 0 0 1 .5.5v3.975a.5.5 0 1 1-1 0V6.707z"
+            /></svg
+        ></a>
       </div>
     </div>
   </div>
@@ -111,7 +102,7 @@ function goToDetail() {
 
 .card-image {
   position: relative;
-  height: 170px;
+  height: 200px;
   overflow: hidden;
 }
 
