@@ -16,7 +16,10 @@ CREATE TABLE IF NOT EXISTS clubs (
     source TEXT NOT NULL,
     issued_key TEXT,
     received_key TEXT,
-    type club_type_enum NOT NULL
+    type club_type_enum NOT NULL,
+    owner_user_id BIGINT NOT NULL,
+    CONSTRAINT clubs_owner_user_id_foreign
+        FOREIGN KEY (owner_user_id) REFERENCES users(id)
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -29,6 +32,7 @@ CREATE TABLE IF NOT EXISTS events (
     url TEXT NOT NULL,
     app_id UUID NOT NULL,
     img TEXT NULL,
+    is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP(0) WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP(0) WITH TIME ZONE NOT NULL DEFAULT NOW(),
     CONSTRAINT events_app_id_foreign

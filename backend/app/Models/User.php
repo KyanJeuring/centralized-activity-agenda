@@ -14,6 +14,20 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable, HasApiTokens;
 
+    protected static function booted(): void
+    {
+        static::created(function (self $user): void {
+            Club::firstOrCreate(
+                ['owner_user_id' => $user->id],
+                [
+                    'name' => 'Club for '.$user->name,
+                    'source' => 'system',
+                    'type' => 'remote',
+                ]
+            );
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -46,5 +60,20 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function club()
+    {
+        return $this->hasOne(Club::class, 'owner_user_id');
+    }
+
+    /**
+     * Get the primary club_id for the user
+     * 
+     * @return string|null
+     */
+    public function getClubIdAttribute()
+    {
+        return $this->club()->value('id');
     }
 }
