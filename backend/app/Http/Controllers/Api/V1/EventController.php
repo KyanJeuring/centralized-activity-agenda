@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Throwable;
 
@@ -208,41 +210,53 @@ class EventController extends Controller
     )]
     public function store(Request $request)
     {
-        $userId = $this->authenticatedUserId($request);
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'name' => 'required_without:title|string',
+                'title' => 'required_without:name|string',
+                'organizer' => 'required|string',
+                'description' => 'required|string',
+                'url' => 'required|string',
+                'app_id' => 'required|uuid|exists:clubs,id',
+                'start_date' => 'nullable|date',
+                'location' => 'nullable|string',
+                'img' => 'nullable|string',
+            ],
+            [
+                'app_id.exists' => 'App/club with the provided app_id was not found.',
+            ]
+        );
 
-        $data = $request->validate([
-            'name' => 'required_without:title|string',
-            'title' => 'required_without:name|string',
-            'organizer' => 'required|string',
-            'description' => 'required|string',
-            'url' => 'required|string',
-            'app_id' => 'required|uuid|exists:clubs,id',
-            'start_date' => 'nullable|date',
-            'location' => 'nullable|string',
-            'img' => 'nullable|string',
-        ]);
-
-        if (! $this->isOwnedClub($data['app_id'], $userId)) {
+        if ($validator->fails()) {
             return response()->json([
-                'message' => 'You are not allowed to create events for this club.',
-            ], Response::HTTP_FORBIDDEN);
+                'message' => 'Validation error.',
+                'errors' => $validator->errors(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
+
+        $data = $validator->validated();
 
         $id = (string) Str::uuid();
 
-        DB::table('events')->insert([
-            'id' => $id,
-            'name' => $data['name'] ?? $data['title'],
-            'organizer' => $data['organizer'],
-            'start_date' => $data['start_date'] ?? null,
-            'description' => $data['description'],
-            'location' => $data['location'] ?? null,
-            'url' => $data['url'],
-            'app_id' => $data['app_id'],
-            'img' => $data['img'] ?? null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::selectOne(
+                'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS id',
+                [
+                    $data['app_id'],
+                    $data['name'] ?? $data['title'],
+                    $data['organizer'],
+                    $data['description'],
+                    $data['url'],
+                    $data['start_date'] ?? null,
+                    $data['location'] ?? null,
+                    $data['img'] ?? null,
+                    $id,
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
         $event = DB::table('events as e')
             ->join('clubs as c', 'c.id', '=', 'e.app_id')
@@ -301,18 +315,10 @@ class EventController extends Controller
     )]
     public function update(Request $request, string $id)
     {
-        $userId = $this->authenticatedUserId($request);
-
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
-        }
-
-        if (! $this->isOwnedEvent($id, $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to update this event.',
-            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = $request->validate([
@@ -326,12 +332,6 @@ class EventController extends Controller
             'location' => 'nullable|string',
             'img' => 'nullable|string',
         ]);
-
-        if (! $this->isOwnedClub($data['app_id'], $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to move this event to that club.',
-            ], Response::HTTP_FORBIDDEN);
-        }
 
         DB::table('events')
             ->where('id', $id)
@@ -365,18 +365,10 @@ class EventController extends Controller
     )]
     public function cancel(Request $request, string $id)
     {
-        $userId = $this->authenticatedUserId($request);
-
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
-        }
-
-        if (! $this->isOwnedEvent($id, $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to cancel this event.',
-            ], Response::HTTP_FORBIDDEN);
         }
 
         DB::transaction(function () use ($id) {
@@ -450,18 +442,10 @@ class EventController extends Controller
     )]
     public function partialUpdate(Request $request, string $id)
     {
-        $userId = $this->authenticatedUserId($request);
-
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
-        }
-
-        if (! $this->isOwnedEvent($id, $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to update this event.',
-            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = $request->validate([
@@ -499,11 +483,30 @@ class EventController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $updates['updated_at'] = now();
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
+                [
+                    $id,
+                    $updates['name'] ?? null,
+                    $updates['organizer'] ?? null,
+                    $updates['start_date'] ?? null,
+                    $updates['description'] ?? null,
+                    $updates['location'] ?? null,
+                    $updates['url'] ?? null,
+                    $updates['img'] ?? null,
+                    $updates['app_id'] ?? null,
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
-        DB::table('events')
-            ->where('id', $id)
-            ->update($updates);
+        if (! $result?->updated) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -523,18 +526,10 @@ class EventController extends Controller
     )]
     public function destroy(Request $request, string $id)
     {
-        $userId = $this->authenticatedUserId($request);
-
         if (! DB::table('events')->where('id', $id)->exists()) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
-        }
-
-        if (! $this->isOwnedEvent($id, $userId)) {
-            return response()->json([
-                'message' => 'You are not allowed to delete this event.',
-            ], Response::HTTP_FORBIDDEN);
         }
 
         DB::transaction(function () use ($id) {
@@ -567,27 +562,5 @@ class EventController extends Controller
                 ->orWhereRaw("LOWER(url) LIKE ? ESCAPE '!'", [$pattern])
                 ->orWhereRaw("LOWER(app_name) LIKE ? ESCAPE '!'", [$pattern]);
         });
-    }
-
-    private function authenticatedUserId(Request $request): int
-    {
-        return (int) $request->user()->id;
-    }
-
-    private function isOwnedClub(string $clubId, int $userId): bool
-    {
-        return DB::table('clubs')
-            ->where('id', $clubId)
-            ->where('owner_user_id', $userId)
-            ->exists();
-    }
-
-    private function isOwnedEvent(string $eventId, int $userId): bool
-    {
-        return DB::table('events as e')
-            ->join('clubs as c', 'c.id', '=', 'e.app_id')
-            ->where('e.id', $eventId)
-            ->where('c.owner_user_id', $userId)
-            ->exists();
     }
 }
