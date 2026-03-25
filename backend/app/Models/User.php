@@ -47,4 +47,15 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    /**
+     * Get the primary club_id for the user
+     * 
+     * @return string|null
+     */
+    public function getClubIdAttribute()
+    {
+        $club = Club::where('owner_user_id', $this->id)->first();
+        return $club ? $club->id : null;
+    }
 }

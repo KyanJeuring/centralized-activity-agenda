@@ -3,6 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\Event;
+use App\Models\Club;
+use App\Http\Requests\Api\V1\StoreEventRequest;
+use App\Http\Requests\Api\V1\UpdateEventRequest;
+use App\Http\Resources\Api\V1\EventResource;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -57,19 +62,16 @@ class EventController extends Controller
     )]
     public function index(Request $request)
     {
-        $userId = $this->authenticatedUserId($request);
-
-        $query = DB::table('vw_events_upcoming');
-        $query->where('owner_user_id', $userId);
+        $query = Event::where('start_date', '>=', now())->orWhereNull('start_date');
 
         $this->applySearchFilter($query, $request->query('search'));
 
         $events = $query
             ->orderByRaw('start_date IS NULL, start_date ASC')
             ->orderByDesc('created_at')
-            ->get();
+            ->cursorPaginate(50);
 
-        return response()->json($events, Response::HTTP_OK);
+        return EventResource::collection($events);
     }
 
     #[OA\Get(
@@ -96,19 +98,16 @@ class EventController extends Controller
     )]
     public function all(Request $request)
     {
-        $userId = $this->authenticatedUserId($request);
-
-        $query = DB::table('vw_events_all');
-        $query->where('owner_user_id', $userId);
+        $query = Event::query()->with('club');
 
         $this->applySearchFilter($query, $request->query('search'));
 
         $events = $query
             ->orderBy('start_date')
             ->orderByDesc('created_at')
-            ->get();
+            ->cursorPaginate(50);
 
-        return response()->json($events, Response::HTTP_OK);
+        return EventResource::collection($events);
     }
 
     #[OA\Get(
@@ -135,19 +134,16 @@ class EventController extends Controller
     )]
     public function past(Request $request)
     {
-        $userId = $this->authenticatedUserId($request);
-
-        $query = DB::table('vw_events_past');
-        $query->where('owner_user_id', $userId);
+        $query = Event::with('club')->whereNotNull('start_date')->where('start_date', '<', now());
 
         $this->applySearchFilter($query, $request->query('search'));
 
         $events = $query
             ->orderByDesc('start_date')
             ->orderByDesc('created_at')
-            ->get();
+            ->cursorPaginate(50);
 
-        return response()->json($events, Response::HTTP_OK);
+        return EventResource::collection($events);
     }
 
     #[OA\Get(
@@ -163,14 +159,9 @@ class EventController extends Controller
             new OA\Response(response: 404, description: 'Event not found'),
         ]
     )]
-    public function show(Request $request, string $id)
+    public function show(string $id)
     {
-        $userId = $this->authenticatedUserId($request);
-
-        $event = DB::table('vw_event_details')
-            ->where('owner_user_id', $userId)
-            ->where('id', $id)
-            ->first();
+        $event = Event::with('club')->find($id);
 
         if (! $event) {
             return response()->json([
@@ -178,7 +169,7 @@ class EventController extends Controller
             ], Response::HTTP_NOT_FOUND);
         }
 
-        return response()->json($event, Response::HTTP_OK);
+        return new EventResource($event);
     }
 
     #[OA\Post(
@@ -189,14 +180,13 @@ class EventController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['organizer', 'description', 'url', 'app_id'],
+                required: ['organizer', 'description', 'url'],
                 properties: [
                     new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'title', type: 'string'),
                     new OA\Property(property: 'organizer', type: 'string'),
                     new OA\Property(property: 'description', type: 'string'),
                     new OA\Property(property: 'url', type: 'string'),
-                    new OA\Property(property: 'app_id', type: 'string', format: 'uuid'),
                     new OA\Property(property: 'start_date', type: 'string', format: 'date-time', nullable: true),
                     new OA\Property(property: 'location', type: 'string', nullable: true),
                     new OA\Property(property: 'img', type: 'string', nullable: true),
@@ -208,78 +198,33 @@ class EventController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function store(Request $request)
+    public function store(StoreEventRequest $request)
     {
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'name' => 'required_without:title|string',
-                'title' => 'required_without:name|string',
-                'organizer' => 'required|string',
-                'description' => 'required|string',
-                'url' => 'required|string',
-                'app_id' => 'required|uuid|exists:clubs,id',
-                'start_date' => 'nullable|date',
-                'location' => 'nullable|string',
-                'img' => 'nullable|string',
-            ],
-            [
-                'app_id.exists' => 'App/club with the provided app_id was not found.',
-            ]
-        );
+        $userId = $this->authenticatedUserId($request);
+        $data = $request->validated();
+        
+        $ownedClubId = $this->resolveDefaultOwnedClubId($userId);
 
-        if ($validator->fails()) {
+        if ($ownedClubId === null) {
             return response()->json([
-                'message' => 'Validation error.',
-                'errors' => $validator->errors(),
+                'message' => 'No club is linked to your account yet. Create/link a club before posting events.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $data = $validator->validated();
+        $event = Event::create([
+            'app_id' => $ownedClubId,
+            'name' => $data['name'] ?? $data['title'],
+            'organizer' => $data['organizer'],
+            'description' => $data['description'],
+            'url' => $data['url'],
+            'start_date' => $data['start_date'] ?? null,
+            'location' => $data['location'] ?? null,
+            'img' => $data['img'] ?? null,
+        ]);
 
-        $id = (string) Str::uuid();
+        $event->load('club');
 
-        try {
-            DB::selectOne(
-                'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS id',
-                [
-                    $data['app_id'],
-                    $data['name'] ?? $data['title'],
-                    $data['organizer'],
-                    $data['description'],
-                    $data['url'],
-                    $data['start_date'] ?? null,
-                    $data['location'] ?? null,
-                    $data['img'] ?? null,
-                    $id,
-                ]
-            );
-        } catch (QueryException $exception) {
-            return $this->storedProcedureErrorResponse($exception);
-        }
-
-        $event = DB::table('events as e')
-            ->join('clubs as c', 'c.id', '=', 'e.app_id')
-            ->where('e.id', $id)
-            ->select([
-                'e.id',
-                'e.name',
-                'e.organizer',
-                'e.start_date',
-                'e.description',
-                'e.location',
-                'e.url',
-                'e.app_id',
-                'c.name as app_name',
-                'c.source as app_source',
-                'c.type as app_type',
-                'e.img',
-                'e.created_at',
-                'e.updated_at',
-            ])
-            ->first();
-
-        return response()->json($event, Response::HTTP_CREATED);
+        return response()->json(new EventResource($event), Response::HTTP_CREATED);
     }
 
     #[OA\Put(
@@ -313,11 +258,12 @@ class EventController extends Controller
             new OA\Response(response: 422, description: 'Validation error'),
         ]
     )]
-    public function update(Request $request, string $id)
+    public function update(UpdateEventRequest $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
+        $event = Event::find($id);
 
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        if (! $event) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
@@ -329,17 +275,7 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        $data = $request->validate([
-            'name' => 'required_without:title|string',
-            'title' => 'required_without:name|string',
-            'organizer' => 'required|string',
-            'description' => 'required|string',
-            'url' => 'required|string',
-            'app_id' => 'required|uuid|exists:clubs,id',
-            'start_date' => 'nullable|date',
-            'location' => 'nullable|string',
-            'img' => 'nullable|string',
-        ]);
+        $data = $request->validated();
 
         if (! $this->isOwnedClub($data['app_id'], $userId)) {
             return response()->json([
@@ -347,19 +283,16 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        DB::table('events')
-            ->where('id', $id)
-            ->update([
-                'name' => $data['name'] ?? $data['title'],
-                'organizer' => $data['organizer'],
-                'start_date' => $data['start_date'] ?? null,
-                'description' => $data['description'],
-                'location' => $data['location'] ?? null,
-                'url' => $data['url'],
-                'app_id' => $data['app_id'],
-                'img' => $data['img'] ?? null,
-                'updated_at' => now(),
-            ]);
+        $event->update([
+            'name' => $data['name'] ?? $data['title'],
+            'organizer' => $data['organizer'],
+            'start_date' => $data['start_date'] ?? null,
+            'description' => $data['description'],
+            'location' => $data['location'] ?? null,
+            'url' => $data['url'],
+            'app_id' => $data['app_id'],
+            'img' => $data['img'] ?? null,
+        ]);
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -465,8 +398,9 @@ class EventController extends Controller
     public function partialUpdate(Request $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
+        $event = Event::find($id);
 
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        if (! $event) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
@@ -493,6 +427,8 @@ class EventController extends Controller
         $updates = [];
         if (array_key_exists('name', $data) || array_key_exists('title', $data)) {
             $updates['name'] = $data['name'] ?? $data['title'];
+            unset($data['title']);
+            unset($data['name']);
         }
 
         foreach (['organizer', 'description', 'url', 'app_id', 'start_date', 'location', 'img'] as $field) {
@@ -513,30 +449,7 @@ class EventController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        try {
-            $result = DB::selectOne(
-                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
-                [
-                    $id,
-                    $updates['name'] ?? null,
-                    $updates['organizer'] ?? null,
-                    $updates['start_date'] ?? null,
-                    $updates['description'] ?? null,
-                    $updates['location'] ?? null,
-                    $updates['url'] ?? null,
-                    $updates['img'] ?? null,
-                    $updates['app_id'] ?? null,
-                ]
-            );
-        } catch (QueryException $exception) {
-            return $this->storedProcedureErrorResponse($exception);
-        }
-
-        if (! $result?->updated) {
-            return response()->json([
-                'message' => "Event with ID {$id} not found.",
-            ], Response::HTTP_NOT_FOUND);
-        }
+        $event->update($updates);
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -557,8 +470,9 @@ class EventController extends Controller
     public function destroy(Request $request, string $id)
     {
         $userId = $this->authenticatedUserId($request);
+        $event = Event::find($id);
 
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        if (! $event) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
@@ -570,10 +484,10 @@ class EventController extends Controller
             ], Response::HTTP_FORBIDDEN);
         }
 
-        DB::transaction(function () use ($id) {
-            DB::table('event_tag')->where('event_id', $id)->delete();
-            DB::table('ext_int_ids')->where('event_id', $id)->delete();
-            DB::table('events')->where('id', $id)->delete();
+        DB::transaction(function () use ($event) {
+            DB::table('event_tag')->where('event_id', $event->id)->delete();
+            DB::table('ext_int_ids')->where('event_id', $event->id)->delete();
+            $event->delete();
         });
 
         return response()->json([
@@ -593,12 +507,14 @@ class EventController extends Controller
         $pattern = "%{$escaped}%";
 
         $query->where(function ($subQuery) use ($pattern) {
-            $subQuery->whereRaw("LOWER(name) LIKE ? ESCAPE '!'", [$pattern])
-                ->orWhereRaw("LOWER(organizer) LIKE ? ESCAPE '!'", [$pattern])
-                ->orWhereRaw("LOWER(description) LIKE ? ESCAPE '!'", [$pattern])
-                ->orWhereRaw("LOWER(location) LIKE ? ESCAPE '!'", [$pattern])
-                ->orWhereRaw("LOWER(url) LIKE ? ESCAPE '!'", [$pattern])
-                ->orWhereRaw("LOWER(app_name) LIKE ? ESCAPE '!'", [$pattern]);
+            $subQuery->where(DB::raw("LOWER(events.name)"), 'LIKE', $pattern)
+                ->orWhere(DB::raw("LOWER(events.organizer)"), 'LIKE', $pattern)
+                ->orWhere(DB::raw("LOWER(events.description)"), 'LIKE', $pattern)
+                ->orWhere(DB::raw("LOWER(events.location)"), 'LIKE', $pattern)
+                ->orWhere(DB::raw("LOWER(events.url)"), 'LIKE', $pattern)
+                ->orWhereHas('club', function ($q) use ($pattern) {
+                    $q->where(DB::raw("LOWER(clubs.name)"), 'LIKE', $pattern);
+                });
         });
     }
 
@@ -622,5 +538,15 @@ class EventController extends Controller
             ->where('e.id', $eventId)
             ->where('c.owner_user_id', $userId)
             ->exists();
+    }
+
+    private function resolveDefaultOwnedClubId(int $userId): ?string
+    {
+        $clubId = DB::table('clubs')
+            ->where('owner_user_id', $userId)
+            ->orderBy('id')
+            ->value('id');
+
+        return $clubId ? (string) $clubId : null;
     }
 }

@@ -95,6 +95,8 @@ CREATE OR REPLACE FUNCTION sp_create_club(
 ) RETURNS UUID AS $$
 DECLARE
     v_id UUID;
+    v_name TEXT;
+    v_source TEXT;
     v_owner_user_id BIGINT;
     v_service_email TEXT;
 BEGIN
@@ -143,7 +145,7 @@ BEGIN
     END IF;
 
     INSERT INTO clubs(id, name, source, issued_key, received_key, type, owner_user_id)
-    VALUES (v_id, p_name, p_source, p_issued_key, p_received_key, p_type, v_owner_user_id);
+    VALUES (v_id, v_name, v_source, p_issued_key, p_received_key, p_type, v_owner_user_id);
 
     RETURN v_id;
 END;
@@ -342,7 +344,11 @@ BEGIN
         RAISE EXCEPTION 'Event url cannot be empty';
     END IF;
 
-    v_id := COALESCE(p_id, sp_generate_uuid());
+    IF p_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Event id must be generated internally and cannot be provided externally';
+    END IF;
+
+    v_id := sp_generate_uuid();
 
     IF NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_app_id) THEN
         RAISE EXCEPTION 'App/club with id % does not exist', p_app_id;
