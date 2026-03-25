@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Validator;
 use OpenApi\Attributes as OA;
 use Throwable;
 
@@ -196,33 +198,53 @@ class EventController extends Controller
     )]
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'name' => 'required_without:title|string',
-            'title' => 'required_without:name|string',
-            'organizer' => 'required|string',
-            'description' => 'required|string',
-            'url' => 'required|string',
-            'app_id' => 'required|uuid|exists:clubs,id',
-            'start_date' => 'nullable|date',
-            'location' => 'nullable|string',
-            'img' => 'nullable|string',
-        ]);
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'name' => 'required_without:title|string',
+                'title' => 'required_without:name|string',
+                'organizer' => 'required|string',
+                'description' => 'required|string',
+                'url' => 'required|string',
+                'app_id' => 'required|uuid|exists:clubs,id',
+                'start_date' => 'nullable|date',
+                'location' => 'nullable|string',
+                'img' => 'nullable|string',
+            ],
+            [
+                'app_id.exists' => 'App/club with the provided app_id was not found.',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error.',
+                'errors' => $validator->errors(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $data = $validator->validated();
 
         $id = (string) Str::uuid();
 
-        DB::table('events')->insert([
-            'id' => $id,
-            'name' => $data['name'] ?? $data['title'],
-            'organizer' => $data['organizer'],
-            'start_date' => $data['start_date'] ?? null,
-            'description' => $data['description'],
-            'location' => $data['location'] ?? null,
-            'url' => $data['url'],
-            'app_id' => $data['app_id'],
-            'img' => $data['img'] ?? null,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        try {
+            DB::selectOne(
+                'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS id',
+                [
+                    $data['app_id'],
+                    $data['name'] ?? $data['title'],
+                    $data['organizer'],
+                    $data['description'],
+                    $data['url'],
+                    $data['start_date'] ?? null,
+                    $data['location'] ?? null,
+                    $data['img'] ?? null,
+                    $id,
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
         $event = DB::table('events as e')
             ->join('clubs as c', 'c.id', '=', 'e.app_id')
@@ -281,37 +303,57 @@ class EventController extends Controller
     )]
     public function update(Request $request, string $id)
     {
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'name' => 'required_without:title|string',
+                'title' => 'required_without:name|string',
+                'organizer' => 'required|string',
+                'description' => 'required|string',
+                'url' => 'required|string',
+                'app_id' => 'required|uuid|exists:clubs,id',
+                'start_date' => 'nullable|date',
+                'location' => 'nullable|string',
+                'img' => 'nullable|string',
+            ],
+            [
+                'app_id.exists' => 'App/club with the provided app_id was not found.',
+            ]
+        );
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation error.',
+                'errors' => $validator->errors(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $data = $validator->validated();
+
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
+                [
+                    $id,
+                    $data['name'] ?? $data['title'],
+                    $data['organizer'],
+                    $data['start_date'] ?? null,
+                    $data['description'],
+                    $data['location'] ?? null,
+                    $data['url'],
+                    $data['img'] ?? null,
+                    $data['app_id'],
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $result?->updated) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
-
-        $data = $request->validate([
-            'name' => 'required_without:title|string',
-            'title' => 'required_without:name|string',
-            'organizer' => 'required|string',
-            'description' => 'required|string',
-            'url' => 'required|string',
-            'app_id' => 'required|uuid|exists:clubs,id',
-            'start_date' => 'nullable|date',
-            'location' => 'nullable|string',
-            'img' => 'nullable|string',
-        ]);
-
-        DB::table('events')
-            ->where('id', $id)
-            ->update([
-                'name' => $data['name'] ?? $data['title'],
-                'organizer' => $data['organizer'],
-                'start_date' => $data['start_date'] ?? null,
-                'description' => $data['description'],
-                'location' => $data['location'] ?? null,
-                'url' => $data['url'],
-                'app_id' => $data['app_id'],
-                'img' => $data['img'] ?? null,
-                'updated_at' => now(),
-            ]);
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -331,44 +373,28 @@ class EventController extends Controller
     )]
     public function cancel(string $id)
     {
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        $updated = null;
+
+        try {
+            DB::transaction(function () use ($id, &$updated) {
+                $updated = DB::selectOne(
+                    'SELECT sp_update_event(?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL) AS updated',
+                    [$id]
+                );
+
+                if ($updated?->updated) {
+                    DB::selectOne('SELECT sp_tag_event(?, ?) AS tagged', [$id, 'cancelled']);
+                }
+            });
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $updated?->updated) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
-
-        DB::transaction(function () use ($id) {
-            $tagId = DB::table('tags')
-                ->whereRaw('LOWER(slug) = ?', ['cancelled'])
-                ->value('id');
-
-            if (! $tagId) {
-                $nextId = (DB::table('tags')->max('id') ?? 0) + 1;
-                DB::table('tags')->insert([
-                    'id' => $nextId,
-                    'slug' => 'cancelled',
-                ]);
-                $tagId = $nextId;
-            }
-
-            $alreadyTagged = DB::table('event_tag')
-                ->where('event_id', $id)
-                ->where('tag_id', $tagId)
-                ->exists();
-
-            if (! $alreadyTagged) {
-                $nextRelationId = (DB::table('event_tag')->max('id') ?? 0) + 1;
-                DB::table('event_tag')->insert([
-                    'id' => $nextRelationId,
-                    'event_id' => $id,
-                    'tag_id' => $tagId,
-                ]);
-            }
-
-            DB::table('events')
-                ->where('id', $id)
-                ->update(['updated_at' => now()]);
-        });
 
         return response()->json([
             'message' => 'Event cancelled successfully.',
@@ -408,23 +434,32 @@ class EventController extends Controller
     )]
     public function partialUpdate(Request $request, string $id)
     {
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'name' => 'sometimes|string',
+                'title' => 'sometimes|string',
+                'organizer' => 'sometimes|string',
+                'description' => 'sometimes|string',
+                'url' => 'sometimes|string',
+                'app_id' => 'sometimes|uuid|exists:clubs,id',
+                'start_date' => 'sometimes|nullable|date',
+                'location' => 'sometimes|nullable|string',
+                'img' => 'sometimes|nullable|string',
+            ],
+            [
+                'app_id.exists' => 'App/club with the provided app_id was not found.',
+            ]
+        );
+
+        if ($validator->fails()) {
             return response()->json([
-                'message' => "Event with ID {$id} not found.",
-            ], Response::HTTP_NOT_FOUND);
+                'message' => 'Validation error.',
+                'errors' => $validator->errors(),
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $data = $request->validate([
-            'name' => 'sometimes|string',
-            'title' => 'sometimes|string',
-            'organizer' => 'sometimes|string',
-            'description' => 'sometimes|string',
-            'url' => 'sometimes|string',
-            'app_id' => 'sometimes|uuid|exists:clubs,id',
-            'start_date' => 'sometimes|nullable|date',
-            'location' => 'sometimes|nullable|string',
-            'img' => 'sometimes|nullable|string',
-        ]);
+        $data = $validator->validated();
 
         $updates = [];
         if (array_key_exists('name', $data) || array_key_exists('title', $data)) {
@@ -443,11 +478,30 @@ class EventController extends Controller
             ], Response::HTTP_BAD_REQUEST);
         }
 
-        $updates['updated_at'] = now();
+        try {
+            $result = DB::selectOne(
+                'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
+                [
+                    $id,
+                    $updates['name'] ?? null,
+                    $updates['organizer'] ?? null,
+                    $updates['start_date'] ?? null,
+                    $updates['description'] ?? null,
+                    $updates['location'] ?? null,
+                    $updates['url'] ?? null,
+                    $updates['img'] ?? null,
+                    $updates['app_id'] ?? null,
+                ]
+            );
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
 
-        DB::table('events')
-            ->where('id', $id)
-            ->update($updates);
+        if (! $result?->updated) {
+            return response()->json([
+                'message' => "Event with ID {$id} not found.",
+            ], Response::HTTP_NOT_FOUND);
+        }
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -467,17 +521,17 @@ class EventController extends Controller
     )]
     public function destroy(string $id)
     {
-        if (! DB::table('events')->where('id', $id)->exists()) {
+        try {
+            $result = DB::selectOne('SELECT sp_delete_event(?) AS deleted', [$id]);
+        } catch (QueryException $exception) {
+            return $this->storedProcedureErrorResponse($exception);
+        }
+
+        if (! $result?->deleted) {
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
-
-        DB::transaction(function () use ($id) {
-            DB::table('event_tag')->where('event_id', $id)->delete();
-            DB::table('ext_int_ids')->where('event_id', $id)->delete();
-            DB::table('events')->where('id', $id)->delete();
-        });
 
         return response()->json([
             'message' => 'Event deleted successfully.',
@@ -504,4 +558,5 @@ class EventController extends Controller
                 ->orWhereRaw("LOWER(app_name) LIKE ? ESCAPE '!'", [$pattern]);
         });
     }
+
 }

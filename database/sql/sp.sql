@@ -95,20 +95,37 @@ CREATE OR REPLACE FUNCTION sp_create_club(
 ) RETURNS UUID AS $$
 DECLARE
     v_id UUID;
+    v_name TEXT;
+    v_source TEXT;
 BEGIN
+    v_name := TRIM(p_name);
+    v_source := TRIM(p_source);
+
+    IF v_name IS NULL OR LENGTH(v_name) = 0 THEN
+        RAISE EXCEPTION 'Club name cannot be empty';
+    END IF;
+
+    IF v_source IS NULL OR LENGTH(v_source) = 0 THEN
+        RAISE EXCEPTION 'Club source cannot be empty';
+    END IF;
+
+    IF p_type IS NULL THEN
+        RAISE EXCEPTION 'Club type is required';
+    END IF;
+
     v_id := COALESCE(p_id, sp_generate_uuid());
 
     IF EXISTS (
         SELECT 1
         FROM clubs
-        WHERE LOWER(name) = LOWER(p_name)
-          AND source = p_source
+                WHERE LOWER(name) = LOWER(v_name)
+                    AND source = v_source
     ) THEN
-        RAISE EXCEPTION 'Club with name "%" and source "%" already exists', p_name, p_source;
+                RAISE EXCEPTION 'Club with name "%" and source "%" already exists', v_name, v_source;
     END IF;
 
     INSERT INTO clubs(id, name, source, issued_key, received_key, type)
-    VALUES (v_id, p_name, p_source, p_issued_key, p_received_key, p_type);
+        VALUES (v_id, v_name, v_source, p_issued_key, p_received_key, p_type);
 
     RETURN v_id;
 END;
@@ -123,6 +140,14 @@ CREATE OR REPLACE FUNCTION sp_update_club_keys(
     p_received_key TEXT DEFAULT NULL
 ) RETURNS BOOLEAN AS $$
 BEGIN
+    IF p_issued_key IS NULL AND p_received_key IS NULL THEN
+        RAISE EXCEPTION 'At least one key must be provided';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_id) THEN
+        RAISE EXCEPTION 'Club with id % does not exist', p_id;
+    END IF;
+
     UPDATE clubs
     SET
         issued_key = COALESCE(p_issued_key, issued_key),
@@ -267,7 +292,36 @@ CREATE OR REPLACE FUNCTION sp_create_event(
 ) RETURNS UUID AS $$
 DECLARE
     v_id UUID;
+    v_name TEXT;
+    v_organizer TEXT;
+    v_description TEXT;
+    v_url TEXT;
 BEGIN
+    v_name := TRIM(p_name);
+    v_organizer := TRIM(p_organizer);
+    v_description := TRIM(p_description);
+    v_url := TRIM(p_url);
+
+    IF p_app_id IS NULL THEN
+        RAISE EXCEPTION 'App/club id is required';
+    END IF;
+
+    IF v_name IS NULL OR LENGTH(v_name) = 0 THEN
+        RAISE EXCEPTION 'Event name cannot be empty';
+    END IF;
+
+    IF v_organizer IS NULL OR LENGTH(v_organizer) = 0 THEN
+        RAISE EXCEPTION 'Event organizer cannot be empty';
+    END IF;
+
+    IF v_description IS NULL OR LENGTH(v_description) = 0 THEN
+        RAISE EXCEPTION 'Event description cannot be empty';
+    END IF;
+
+    IF v_url IS NULL OR LENGTH(v_url) = 0 THEN
+        RAISE EXCEPTION 'Event url cannot be empty';
+    END IF;
+
     v_id := COALESCE(p_id, sp_generate_uuid());
 
     IF NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_app_id) THEN
@@ -278,16 +332,16 @@ BEGIN
         SELECT 1
         FROM events
         WHERE app_id = p_app_id
-          AND url = p_url
+                    AND LOWER(TRIM(url)) = LOWER(v_url)
     ) THEN
-        RAISE EXCEPTION 'Event with url "%" already exists for app %', p_url, p_app_id;
+                RAISE EXCEPTION 'Event with url "%" already exists for app %', v_url, p_app_id;
     END IF;
 
     INSERT INTO events(
         id, name, organizer, start_date, description, location, url, app_id, img,
         created_at, updated_at
     ) VALUES (
-        v_id, p_name, p_organizer, p_start_date, p_description, p_location, p_url, p_app_id, p_img,
+        v_id, v_name, v_organizer, p_start_date, v_description, p_location, v_url, p_app_id, p_img,
         NOW(), NOW()
     );
 
@@ -306,18 +360,80 @@ CREATE OR REPLACE FUNCTION sp_update_event(
     p_description TEXT DEFAULT NULL,
     p_location TEXT DEFAULT NULL,
     p_url TEXT DEFAULT NULL,
-    p_img TEXT DEFAULT NULL
+    p_img TEXT DEFAULT NULL,
+    p_app_id UUID DEFAULT NULL
 ) RETURNS BOOLEAN AS $$
+DECLARE
+    v_current_app_id UUID;
+    v_target_app_id UUID;
+    v_name TEXT;
+    v_organizer TEXT;
+    v_description TEXT;
+    v_location TEXT;
+    v_url TEXT;
+    v_img TEXT;
 BEGIN
+    IF p_event_id IS NULL THEN
+        RAISE EXCEPTION 'Event id is required';
+    END IF;
+
+    SELECT app_id INTO v_current_app_id
+    FROM events
+    WHERE id = p_event_id;
+
+    IF v_current_app_id IS NULL THEN
+        RETURN FALSE;
+    END IF;
+
+    v_name := CASE WHEN p_name IS NULL THEN NULL ELSE TRIM(p_name) END;
+    v_organizer := CASE WHEN p_organizer IS NULL THEN NULL ELSE TRIM(p_organizer) END;
+    v_description := CASE WHEN p_description IS NULL THEN NULL ELSE TRIM(p_description) END;
+    v_location := CASE WHEN p_location IS NULL THEN NULL ELSE TRIM(p_location) END;
+    v_url := CASE WHEN p_url IS NULL THEN NULL ELSE TRIM(p_url) END;
+    v_img := CASE WHEN p_img IS NULL THEN NULL ELSE TRIM(p_img) END;
+
+    IF p_name IS NOT NULL AND (v_name IS NULL OR LENGTH(v_name) = 0) THEN
+        RAISE EXCEPTION 'Event name cannot be empty';
+    END IF;
+
+    IF p_organizer IS NOT NULL AND (v_organizer IS NULL OR LENGTH(v_organizer) = 0) THEN
+        RAISE EXCEPTION 'Event organizer cannot be empty';
+    END IF;
+
+    IF p_description IS NOT NULL AND (v_description IS NULL OR LENGTH(v_description) = 0) THEN
+        RAISE EXCEPTION 'Event description cannot be empty';
+    END IF;
+
+    IF p_url IS NOT NULL AND (v_url IS NULL OR LENGTH(v_url) = 0) THEN
+        RAISE EXCEPTION 'Event url cannot be empty';
+    END IF;
+
+    IF p_app_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_app_id) THEN
+        RAISE EXCEPTION 'App/club with id % does not exist', p_app_id;
+    END IF;
+
+    v_target_app_id := COALESCE(p_app_id, v_current_app_id);
+
+    IF p_url IS NOT NULL AND EXISTS (
+        SELECT 1
+        FROM events
+        WHERE id <> p_event_id
+          AND app_id = v_target_app_id
+          AND LOWER(TRIM(url)) = LOWER(v_url)
+    ) THEN
+        RAISE EXCEPTION 'Event with url "%" already exists for app %', v_url, v_target_app_id;
+    END IF;
+
     UPDATE events
     SET
-        name = COALESCE(p_name, name),
-        organizer = COALESCE(p_organizer, organizer),
+        name = COALESCE(v_name, name),
+        organizer = COALESCE(v_organizer, organizer),
         start_date = COALESCE(p_start_date, start_date),
-        description = COALESCE(p_description, description),
-        location = COALESCE(p_location, location),
-        url = COALESCE(p_url, url),
-        img = COALESCE(p_img, img),
+        description = COALESCE(v_description, description),
+        location = COALESCE(v_location, location),
+        url = COALESCE(v_url, url),
+        img = COALESCE(v_img, img),
+        app_id = COALESCE(p_app_id, app_id),
         updated_at = NOW()
     WHERE id = p_event_id;
 
@@ -356,7 +472,14 @@ CREATE OR REPLACE FUNCTION sp_upsert_external_id(
 ) RETURNS UUID AS $$
 DECLARE
     v_id UUID;
+    v_external_id TEXT;
 BEGIN
+    v_external_id := TRIM(p_external_id);
+
+    IF v_external_id IS NULL OR LENGTH(v_external_id) = 0 THEN
+        RAISE EXCEPTION 'External id cannot be empty';
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event % does not exist', p_event_id;
     END IF;
@@ -367,7 +490,7 @@ BEGIN
 
     SELECT id INTO v_id
     FROM ext_int_ids
-    WHERE app_id = p_app_id AND external_id = p_external_id
+    WHERE app_id = p_app_id AND external_id = v_external_id
     ORDER BY created_at DESC
     LIMIT 1;
 
@@ -379,7 +502,7 @@ BEGIN
     END IF;
 
     INSERT INTO ext_int_ids(id, event_id, app_id, external_id, created_at)
-    VALUES (sp_generate_uuid(), p_event_id, p_app_id, p_external_id, NOW())
+    VALUES (sp_generate_uuid(), p_event_id, p_app_id, v_external_id, NOW())
     RETURNING id INTO v_id;
 
     RETURN v_id;
@@ -411,11 +534,22 @@ CREATE OR REPLACE FUNCTION sp_read_event_by_external_id(
 ) AS $$
 DECLARE
     v_event_id UUID;
+    v_external_id TEXT;
 BEGIN
+    v_external_id := TRIM(p_external_id);
+
+    IF p_app_id IS NULL THEN
+        RAISE EXCEPTION 'App/club id is required';
+    END IF;
+
+    IF v_external_id IS NULL OR LENGTH(v_external_id) = 0 THEN
+        RAISE EXCEPTION 'External id cannot be empty';
+    END IF;
+
     SELECT x.event_id INTO v_event_id
     FROM ext_int_ids x
     WHERE x.app_id = p_app_id
-      AND x.external_id = p_external_id
+      AND x.external_id = v_external_id
     ORDER BY x.created_at DESC
     LIMIT 1;
 
@@ -442,6 +576,14 @@ CREATE OR REPLACE FUNCTION sp_create_staging(
 DECLARE
     v_id UUID;
 BEGIN
+    IF p_app_id IS NULL THEN
+        RAISE EXCEPTION 'App/club id is required';
+    END IF;
+
+    IF p_raw_data IS NULL THEN
+        RAISE EXCEPTION 'Staging raw_data cannot be null';
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_app_id) THEN
         RAISE EXCEPTION 'App/club with id % does not exist', p_app_id;
     END IF;
@@ -470,6 +612,14 @@ CREATE OR REPLACE FUNCTION sp_read_staging(
     created_at TIMESTAMP(0) WITH TIME ZONE
 ) AS $$
 BEGIN
+    IF p_app_id IS NULL THEN
+        RAISE EXCEPTION 'App/club id is required';
+    END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM clubs WHERE id = p_app_id) THEN
+        RAISE EXCEPTION 'App/club with id % does not exist', p_app_id;
+    END IF;
+
     RETURN QUERY
     SELECT
         s.id,
@@ -559,12 +709,19 @@ CREATE OR REPLACE FUNCTION sp_tag_event(
 ) RETURNS BOOLEAN AS $$
 DECLARE
     v_tag_id BIGINT;
+    v_tag_slug TEXT;
 BEGIN
+    v_tag_slug := TRIM(p_tag_slug);
+
+    IF v_tag_slug IS NULL OR LENGTH(v_tag_slug) = 0 THEN
+        RAISE EXCEPTION 'Tag slug cannot be empty';
+    END IF;
+
     IF NOT EXISTS (SELECT 1 FROM events WHERE id = p_event_id) THEN
         RAISE EXCEPTION 'Event % does not exist', p_event_id;
     END IF;
 
-    v_tag_id := sp_create_tag(p_tag_slug);
+    v_tag_id := sp_create_tag(v_tag_slug);
 
     IF EXISTS (
         SELECT 1
@@ -591,10 +748,21 @@ CREATE OR REPLACE FUNCTION sp_untag_event(
 ) RETURNS BOOLEAN AS $$
 DECLARE
     v_tag_id BIGINT;
+    v_tag_slug TEXT;
 BEGIN
+    v_tag_slug := TRIM(p_tag_slug);
+
+    IF NOT EXISTS (SELECT 1 FROM events WHERE id = p_event_id) THEN
+        RAISE EXCEPTION 'Event % does not exist', p_event_id;
+    END IF;
+
+    IF v_tag_slug IS NULL OR LENGTH(v_tag_slug) = 0 THEN
+        RAISE EXCEPTION 'Tag slug cannot be empty';
+    END IF;
+
     SELECT id INTO v_tag_id
     FROM tags
-    WHERE LOWER(slug) = LOWER(TRIM(p_tag_slug))
+    WHERE LOWER(slug) = LOWER(v_tag_slug)
     LIMIT 1;
 
     IF v_tag_id IS NULL THEN
