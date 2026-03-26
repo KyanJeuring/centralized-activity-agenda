@@ -533,7 +533,7 @@ class EventController extends Controller
         ], Response::HTTP_OK);
     }
 
-    private function applySearchFilter($query, ?string $search): void
+    private function applySearchFilter(&$query, ?string $search): void
     {
         $term = trim((string) $search);
 
@@ -541,16 +541,16 @@ class EventController extends Controller
             return;
         }
 
-        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], Str::lower($term));
+        $escaped = str_replace(['\\', '%', '_'], ['\\', '%', '_'], Str::lower($term));
         $pattern = "%{$escaped}%";
 
-        $query->where(function ($subQuery) use ($pattern) {
-            $subQuery->whereRaw("LOWER(COALESCE(name, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
-                ->orWhereRaw("LOWER(COALESCE(organizer, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
-                ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
-                ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
-                ->orWhereRaw("LOWER(COALESCE(url, '')) LIKE ? ESCAPE '\\\\'", [$pattern])
-                ->orWhereRaw("LOWER(COALESCE(app_name, '')) LIKE ? ESCAPE '\\\\'", [$pattern]);
+        $query = $query->where(function ($subQuery) use ($pattern) {
+            $subQuery->whereRaw("LOWER(COALESCE(name, '')) LIKE ?", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(organizer, '')) LIKE ?", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(description, '')) LIKE ?", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(location, '')) LIKE ?", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(url, '')) LIKE ?", [$pattern])
+                ->orWhereRaw("LOWER(COALESCE(app_name, '')) LIKE ?", [$pattern]);
         });
     }
 
