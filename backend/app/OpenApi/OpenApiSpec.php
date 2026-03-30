@@ -10,7 +10,7 @@ use OpenApi\Attributes as OA;
     description: 'OpenAPI documentation for the CAA backend.'
 )]
 #[OA\Server(
-    url: '/api',
+    url: '/api/v1',
     description: 'Laravel API base path'
 )]
 #[OA\SecurityScheme(
