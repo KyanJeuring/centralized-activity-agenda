@@ -11,10 +11,9 @@ const isDetailPage = computed(() => route.name === "EventDetail"); // re-evaluat
   <nav class="navbar">
     <div class="navbar-inner">
       <router-link to="/" class="navbar-brand">
-        <span class="navbar-title">Centralised Activity Agenda</span>
+        <span class="navbar-title">Centralized Activity Agenda</span>
         <div class="navbar-subtitle">
-          Tech, Business &amp; Social Events across Groningen, Friesland &amp;
-          Drenthe
+          Upcoming events in the North of Netherlands
         </div>
       </router-link>
 
@@ -26,13 +25,12 @@ const isDetailPage = computed(() => route.name === "EventDetail"); // re-evaluat
             height="16"
             fill="currentColor"
             class="bi bi-arrow-bar-left"
-            viewBox="0 0 16 16"
-          >
+            viewBox="0 0 16 16">
             <path
               fill-rule="evenodd"
               d="M12.5 15a.5.5 0 0 1-.5-.5v-13a.5.5 0 0 1 1 0v13a.5.5 0 0 1-.5.5M10 8a.5.5 0 0 1-.5.5H3.707l2.147 2.146a.5.5 0 0 1-.708.708l-3-3a.5.5 0 0 1 0-.708l3-3a.5.5 0 1 1 .708.708L3.707 7.5H9.5a.5.5 0 0 1 .5.5"
-            /></svg
-          >Back to Events
+            /></svg>
+            Back to Events
         </router-link>
       </div>
     </div>

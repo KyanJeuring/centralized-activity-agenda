@@ -33,7 +33,6 @@ function goToDetail() {
 <template>
   <div class="event-card">
     <div class="card-image" :style="{ backgroundColor: categoryColour }">
-      <img :src="event.img" alt="card-img" />
       <span class="category-badge" :style="{ backgroundColor: badgeColour }">
         {{ event.category }}
       </span>
@@ -104,6 +103,7 @@ function goToDetail() {
   position: relative;
   height: 200px;
   overflow: hidden;
+  object-fit: cover;
 }
 
 .category-badge {

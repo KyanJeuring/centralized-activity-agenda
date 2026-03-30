@@ -74,9 +74,6 @@ function resetFilters() {
             {{ category }}
           </option>
         </select>
-        <select v-model="selectedDate" class="filter-select">
-          <option value="">All Dates</option>
-        </select>
         <button class="reset-btn" @click="resetFilters">Reset</button>
       </div>
     </div>
