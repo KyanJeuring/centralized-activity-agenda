@@ -39,3 +39,7 @@ servers.json
 # ==================================================
 .cache/
 .tmp/
+
+# Ignore database backups
+/database/backups/*
+!/database/backups/.gitkeep
