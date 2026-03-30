@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::group(function () {
+Route::group([], function () {
 
     // 1. PUBLIC TEST ROUTE (Partner's database check)
     Route::get('/test-endpoint', [SystemController::class, 'testEndpoint']);
