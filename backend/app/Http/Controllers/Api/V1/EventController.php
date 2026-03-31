@@ -178,9 +178,8 @@ class EventController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['organizer', 'description', 'url'],
+                required: ['title', 'organizer', 'description', 'url'],
                 properties: [
-                    new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'title', type: 'string'),
                     new OA\Property(property: 'organizer', type: 'string'),
                     new OA\Property(property: 'description', type: 'string'),
@@ -214,7 +213,7 @@ class EventController extends Controller
                 'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?) AS event_id',
                 [
                     $ownedClubId,
-                    $data['name'] ?? $data['title'],
+                    $data['title'],
                     $data['organizer'],
                     $data['description'],
                     $data['url'],
@@ -257,9 +256,8 @@ class EventController extends Controller
         requestBody: new OA\RequestBody(
             required: true,
             content: new OA\JsonContent(
-                required: ['organizer', 'description', 'url'],
+                required: ['title', 'organizer', 'description', 'url'],
                 properties: [
-                    new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'title', type: 'string'),
                     new OA\Property(property: 'organizer', type: 'string'),
                     new OA\Property(property: 'description', type: 'string'),
@@ -300,7 +298,7 @@ class EventController extends Controller
                 'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
                 [
                     $id,
-                    $data['name'] ?? $data['title'],
+                    $data['title'],
                     $data['organizer'],
                     $this->toDatabaseDate($data['start_date'] ?? null),
                     $data['description'],
@@ -381,7 +379,6 @@ class EventController extends Controller
             required: true,
             content: new OA\JsonContent(
                 properties: [
-                    new OA\Property(property: 'name', type: 'string'),
                     new OA\Property(property: 'title', type: 'string'),
                     new OA\Property(property: 'organizer', type: 'string'),
                     new OA\Property(property: 'description', type: 'string'),
@@ -418,7 +415,6 @@ class EventController extends Controller
         }
 
         $data = $request->validate([
-            'name' => 'sometimes|string',
             'title' => 'sometimes|string',
             'organizer' => 'sometimes|string',
             'description' => 'sometimes|string',
@@ -429,18 +425,7 @@ class EventController extends Controller
             'img' => 'sometimes|nullable|string',
         ]);
 
-        $updates = [];
-        if (array_key_exists('name', $data) || array_key_exists('title', $data)) {
-            $updates['name'] = $data['name'] ?? $data['title'];
-            unset($data['title']);
-            unset($data['name']);
-        }
-
-        foreach (['organizer', 'description', 'url', 'app_id', 'start_date', 'location', 'img'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $updates[$field] = $data[$field];
-            }
-        }
+        $updates = $data;
 
         if (array_key_exists('app_id', $updates) && ! $this->isOwnedClub($updates['app_id'], $userId)) {
             return response()->json([
@@ -459,7 +444,7 @@ class EventController extends Controller
                 'SELECT sp_update_event(?, ?, ?, ?, ?, ?, ?, ?, ?) AS updated',
                 [
                     $id,
-                    $updates['name'] ?? null,
+                    $updates['title'] ?? null,
                     $updates['organizer'] ?? null,
                     $this->toDatabaseDate($updates['start_date'] ?? null),
                     $updates['description'] ?? null,

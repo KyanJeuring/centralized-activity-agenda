@@ -25,8 +25,7 @@ class StoreEventRequest extends FormRequest
         return [
             'id' => 'prohibited',
             'app_id' => 'prohibited',
-            'name' => 'required_without:title|string',
-            'title' => 'required_without:name|string',
+            'title' => 'required|string',
             'organizer' => 'required|string',
             'description' => 'required|string',
             'url' => 'required|string',
