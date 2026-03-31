@@ -20,25 +20,31 @@ services:
     depends_on:
       - backend
 
-  # PHP Backend API
+  # Laravel Backend API
   backend:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    container_name: php_backend
+    container_name: laravel_backend
     restart: unless-stopped
     working_dir: /var/www
-    command: php -S 0.0.0.0:${BACKEND_PORT} -t /var/www
     ports:
       - "${BACKEND_PORT}:${BACKEND_PORT}"
     volumes:
       - ./backend:/var/www
+      - ./database/sql:/var/www/database_sql:ro
+      - backend_vendor:/var/www/vendor
+      - backend_storage:/var/www/storage
     environment:
-      DB_HOST: database
-      DB_PORT: ${POSTGRES_PORT}
-      DB_DATABASE: ${POSTGRES_DB}
-      DB_USERNAME: ${POSTGRES_USER}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKEND_PORT: ${BACKEND_PORT}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: "http://localhost:${BACKEND_PORT}"
+      POSTGRES_HOST: database
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     depends_on:
       database:
         condition: service_healthy
@@ -76,8 +82,31 @@ services:
       database:
         condition: service_healthy
     volumes:
+      - ./database/pgadmin/servers.json:/pgadmin4/servers.json:ro
       - pgadmin_data:/var/lib/pgadmin
+
+  # PostgreSQL Database Backup
+  db_backups:
+    image: prodrigestivill/postgres-backup-local
+    container_name: postgres_backup
+    restart: unless-stopped
+    depends_on:
+      - database
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: '@daily'
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 2
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./database/backups:/backups
 
 volumes:
   postgres_data:
   pgadmin_data:
+  backend_vendor:
+  backend_storage:
