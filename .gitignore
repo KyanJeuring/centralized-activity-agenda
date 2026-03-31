@@ -27,10 +27,19 @@ yarn-error.log*
 # Build / output (tool-agnostic)
 # ==================================================
 dist/
-.angular/cache/
+node_modules/
+
+# ==================================================
+# Database
+# ==================================================
+servers.json
 
 # ==================================================
 # Caches / temp
 # ==================================================
 .cache/
 .tmp/
+
+# Ignore database backups
+/database/backups/*
+!/database/backups/.gitkeep
