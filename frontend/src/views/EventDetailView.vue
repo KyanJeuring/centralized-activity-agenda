@@ -1,17 +1,28 @@
 <script setup>
-import { computed, watchEffect } from "vue";
+import { computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { events } from "../data/events.js";
-import {
-  categoryColors,
-  fallbackCategoryColor,
-} from "../data/categoryColors.js";
+import { onMounted } from "vue";
+import { useEvents } from "../composables/useEvents.js";
 
+const { events, isLoading, fetchEvents } = useEvents();
+onMounted(() => fetchEvents());
 const route = useRoute();
 const router = useRouter();
+const bannerImage = computed(
+  () =>
+    event.value?.img?.trim() ||
+    "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1600&auto=format&fit=crop",
+);
+const bannerAlt = computed(() => event.value?.title ?? "Event banner");
+
+watch(isLoading, (loading) => {
+  if (!loading && !event.value) {
+    router.push({ name: "Home" });
+  }
+});
 
 const event = computed(() =>
-  events.find((e) => e.id === Number(route.params.id)),
+  events.value.find((e) => e.id === route.params.id),
 );
 
 const formattedDate = computed(() => {
@@ -24,19 +35,18 @@ const formattedDate = computed(() => {
     year: "numeric",
   });
 });
-
-watchEffect(() => {
-  if (!event.value) router.push({ name: "Home" });
-});
 </script>
 
 <template>
   <div v-if="event" class="detail-page">
-    <div class="banner" :style="{ backgroundColor: bannerColour }"></div>
+    <div class="banner">
+      <img :src="bannerImage" :alt="bannerAlt" class="banner-image" />
+      <div class="banner-overlay"></div>
+    </div>
 
     <div class="detail-inner">
       <div class="detail-header">
-        <h1 class="event-name">{{ event.name }}</h1>
+        <h1 class="event-name">{{ event.title }}</h1>
         <p class="event-description">{{ event.description }}</p>
       </div>
 
@@ -81,9 +91,29 @@ watchEffect(() => {
   min-height: calc(100vh - 70px);
 }
 .banner {
-  height: 220px;
+  position: relative;
+  height: 320px;
   overflow: hidden;
-  background-color: #2563eb;
+  background-color: #1b3a6b;
+}
+
+.banner-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.banner-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(11, 21, 39, 0.14) 0%,
+      rgba(11, 21, 39, 0.38) 100%
+    ),
+    linear-gradient(90deg, rgba(27, 58, 107, 0.35) 0%, rgba(27, 58, 107, 0) 60%);
 }
 
 .detail-inner {

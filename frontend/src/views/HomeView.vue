@@ -1,42 +1,34 @@
 <script setup>
+import { useEvents } from "../composables/useEvents.js";
 import { ref, computed } from "vue";
-import { events } from "../data/events.js";
 import EventCard from "../components/EventCard.vue";
 
 const searchQuery = ref("");
 const selectedCity = ref("");
-const selectedCategory = ref("");
-const selectedDateRange = ref("");
+const { events, isLoading, error, fetchEvents } = useEvents();
 
 const cities = computed(() =>
-  [...new Set(events.map((e) => e.location))].sort(),
-);
-const categories = computed(() =>
-  [...new Set(events.map((e) => e.category))].sort(),
+  [...new Set(events.value.map((e) => e.location))].sort(),
 );
 
 const filteredEvents = computed(() => {
   const q = searchQuery.value.toLowerCase();
-  return events.filter((event) => {
-    4;
+  return events.value.filter((event) => {
     const matchesSearch =
       !q ||
       event.title.toLowerCase().includes(q) ||
-      event.organiser.toLowerCase().includes(q) ||
+      event.organizer.toLowerCase().includes(q) ||
       event.location.toLowerCase().includes(q);
     const matchesCity =
       !selectedCity.value || event.location === selectedCity.value;
-    const matchesCategory =
-      !selectedCategory.value || event.category === selectedCategory.value;
 
-    return matchesSearch && matchesCity && matchesCategory;
+    return matchesSearch && matchesCity;
   });
 });
 
 function resetFilters() {
   searchQuery.value = "";
   selectedCity.value = "";
-  selectedCategory.value = "";
 }
 </script>
 
@@ -64,16 +56,6 @@ function resetFilters() {
             {{ city }}
           </option>
         </select>
-        <select v-model="selectedCategory" class="filter-select">
-          <option value="">All categories</option>
-          <option
-            v-for="category in categories"
-            :key="category"
-            :value="category"
-          >
-            {{ category }}
-          </option>
-        </select>
         <button class="reset-btn" @click="resetFilters">Reset</button>
       </div>
     </div>
@@ -84,14 +66,28 @@ function resetFilters() {
         <p v-if="filteredEvents.length === 0" class="no-results">
           No events match your search.
         </p>
-
-        <div class="events-grid">
-          <EventCard
-            v-for="event in filteredEvents"
-            :key="event.id"
-            :event="event"
-          />
+        <!-- show while fetch is in progress -->
+        <div v-if="isLoading" class="state-message">
+          <p>Loading events...</p>
         </div>
+
+        <!-- show if fetch failed -->
+        <div v-else-if="error" class="state-message error-state">
+          <p>Could not load events: {{ error }}</p>
+          <button class="reset-btn" @click="fetchEvents">Try again</button>
+        </div>
+        <template v-else>
+          <p v-if="filteredEvents.length === 0" class="no-results">
+            No events match your search.
+          </p>
+          <div class="events-grid">
+            <EventCard
+              v-for="event in filteredEvents"
+              :key="event.id"
+              :event="event"
+            />
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -230,5 +226,18 @@ function resetFilters() {
   .reset-btn {
     width: 100%;
   }
+}
+
+.state-message {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+.error-state {
+  color: #ef4444;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
 }
 </style>

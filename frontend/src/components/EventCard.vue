@@ -1,19 +1,27 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import {
-  categoryColors,
-  fallbackCategoryColor,
-} from "../data/categoryColors.js";
 
 const props = defineProps({
   event: {
     type: Object,
-    rewuired: true,
+    required: true,
   },
 });
 
 const router = useRouter();
+
+const eventTitle = computed(
+  () => props.event.title ?? props.event.name ?? "Event",
+);
+const organizerInitial = computed(() =>
+  (props.event.organizer ?? "E").charAt(0).toUpperCase(),
+);
+const coverImage = computed(
+  () =>
+    props.event.img?.trim() ||
+    "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1600&auto=format&fit=crop",
+);
 
 // Format the date to weekday, day and month
 const formattedDate = computed(() => {
@@ -32,21 +40,20 @@ function goToDetail() {
 
 <template>
   <div class="event-card">
-    <div class="card-image" :style="{ backgroundColor: categoryColour }">
-      <span class="category-badge" :style="{ backgroundColor: badgeColour }">
-        {{ event.category }}
-      </span>
+    <div class="card-image">
+      <img :src="coverImage" :alt="eventTitle" class="card-image-media" />
+      <div class="card-image-overlay"></div>
     </div>
 
     <div class="card-body">
       <div class="organiser-row">
-        <div class="organiser-avatar" :style="{ backgroundColor: event.color }">
-          {{ event.organizer.charAt(0) }}
+        <div class="organiser-avatar">
+          {{ organizerInitial }}
         </div>
         <span class="organiser-name">{{ event.organizer }}</span>
       </div>
 
-      <h3 class="card-name">{{ event.name }}</h3>
+      <h3 class="card-title">{{ eventTitle }}</h3>
 
       <div class="card-meta">
         <span class="meta-item">
@@ -101,21 +108,25 @@ function goToDetail() {
 
 .card-image {
   position: relative;
-  height: 200px;
+  aspect-ratio: 16 / 10;
   overflow: hidden;
-  object-fit: cover;
 }
 
-.category-badge {
+.card-image-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.card-image-overlay {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  color: white;
-  font-size: 11px;
-  padding: 2px 10px;
-  border-radius: 20px;
-  font-weight: 700;
-  text-transform: capitalize;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 18, 35, 0.08) 0%,
+    rgba(10, 18, 35, 0.24) 100%
+  );
 }
 .card-body {
   padding: 1rem;

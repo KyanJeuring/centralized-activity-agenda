@@ -1,35 +1,61 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from "vue";
-const isVisible = ref(true); // controls whether the floating button is visible or not
+import { ref, computed, onMounted, onUnmounted } from "vue";
 
-const props = defineProps({
-  footerRef: {
-    type: Object,
-    default: null,
-  },
-});
+const baseBottom = 24;
+const footerGap = 24;
+const isVisible = ref(true);
+const bottomOffset = ref(baseBottom);
 
 let observer = null;
+let animationFrameId = 0;
+
+function updateButtonOffset() {
+  const footerElement = document.querySelector("footer");
+
+  if (!footerElement) {
+    bottomOffset.value = baseBottom;
+    return;
+  }
+
+  const footerRect = footerElement.getBoundingClientRect();
+  const visibleFooterHeight = Math.max(0, window.innerHeight - footerRect.top);
+  bottomOffset.value = Math.max(baseBottom, visibleFooterHeight + footerGap);
+}
+
+function scheduleUpdate() {
+  if (animationFrameId) return;
+
+  animationFrameId = window.requestAnimationFrame(() => {
+    animationFrameId = 0;
+    updateButtonOffset();
+  });
+}
 
 onMounted(() => {
-  const footerElement = document.querySelector("footer");
-  if (!footerElement) return;
+  updateButtonOffset();
+  window.addEventListener("scroll", scheduleUpdate, { passive: true });
+  window.addEventListener("resize", scheduleUpdate);
 
-  observer = new IntersectionObserver(
-    ([entry]) => {
-      isVisible.value = !entry.isIntersecting;
-    },
-    {
-      threshold: 0, // trigger as soon the footer is visible
-    },
-  );
-
-  observer.observe(footerElement);
+  observer = new MutationObserver(() => scheduleUpdate());
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+  });
 });
 
 onUnmounted(() => {
-  observer?.disconnect(); // always disconnect to avoid memory leaks
+  window.removeEventListener("scroll", scheduleUpdate);
+  window.removeEventListener("resize", scheduleUpdate);
+  observer?.disconnect();
+  if (animationFrameId) {
+    window.cancelAnimationFrame(animationFrameId);
+  }
 });
+
+const fabStyle = computed(() => ({
+  bottom: `${bottomOffset.value}px`,
+}));
 </script>
 
 <template>
@@ -38,6 +64,7 @@ onUnmounted(() => {
       v-show="isVisible"
       :to="{ name: 'Information' }"
       class="fab"
+      :style="fabStyle"
       title="Add your events to our platform"
     >
       <svg
@@ -63,7 +90,6 @@ onUnmounted(() => {
 <style scoped>
 .fab {
   position: fixed;
-  bottom: 2rem;
   right: 2rem;
   z-index: 200;
 

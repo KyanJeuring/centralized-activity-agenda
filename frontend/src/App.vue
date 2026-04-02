@@ -1,10 +1,21 @@
 <script setup>
-import { ref } from "vue";
-import Navbar from './components/Navbar.vue';
-import Footer from './components/Footer.vue';
+import { onMounted, onUnmounted } from "vue";
+import Navbar from "./components/Navbar.vue";
+import Footer from "./components/Footer.vue";
 import FloatingInfoButton from "./components/FloatingInfoButton.vue";
+import { useEvents } from "./composables/useEvents.js";
 
-const footerElement = ref(null)
+const { fetchEvents, startAutoRefresh } = useEvents();
+let stopAutoRefresh = null;
+
+onMounted(() => {
+  fetchEvents();
+  stopAutoRefresh = startAutoRefresh();
+});
+
+onUnmounted(() => {
+  stopAutoRefresh?.();
+});
 </script>
 
 <template>
@@ -12,6 +23,6 @@ const footerElement = ref(null)
   <main class="main-content">
     <router-view />
   </main>
-  <Footer ref="footerElement" />
-  <FloatingInfoButton :footerRef="footerElement" />
+  <Footer />
+  <FloatingInfoButton />
 </template>
