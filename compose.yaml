@@ -1,0 +1,112 @@
+services:
+  # Vue Frontend
+  frontend:
+    hostname: vue_frontend
+    container_name: vue_frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    working_dir: /frontend
+    ports:
+      - "${FRONTEND_PORT}:4200"
+    volumes:
+      - ./frontend:/frontend
+      - /frontend/node_modules
+    environment:
+      TZ: UTC
+      CHOKIDAR_USEPOLLING: "true"
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 4200 --strictPort"]
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # Laravel Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: laravel_backend
+    restart: unless-stopped
+    working_dir: /var/www
+    ports:
+      - "${BACKEND_PORT}:${BACKEND_PORT}"
+    volumes:
+      - ./backend:/var/www
+      - ./database/sql:/var/www/database_sql:ro
+      - backend_vendor:/var/www/vendor
+      - backend_storage:/var/www/storage
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT}
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: "http://localhost:${BACKEND_PORT}"
+      POSTGRES_HOST: database
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      database:
+        condition: service_healthy
+
+  # PostgreSQL Database
+  database:
+    image: postgres:17-alpine
+    container_name: postgres_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # pgAdmin Web Interface
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+    ports:
+      - "${PGADMIN_PORT}:80"
+    depends_on:
+      database:
+        condition: service_healthy
+    volumes:
+      - ./database/pgadmin/servers.json:/pgadmin4/servers.json:ro
+      - pgadmin_data:/var/lib/pgadmin
+
+  # PostgreSQL Database Backup
+  db_backups:
+    image: prodrigestivill/postgres-backup-local
+    container_name: postgres_backup
+    restart: unless-stopped
+    depends_on:
+      - database
+    environment:
+      POSTGRES_HOST: database
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: '@daily'
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 2
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./database/backups:/backups
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  backend_vendor:
+  backend_storage:
