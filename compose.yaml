@@ -1,8 +1,8 @@
 services:
-  # Angular Frontend (Not final decision)
+  # Vue Frontend
   frontend:
-    hostname: angular_frontend
-    container_name: angular_frontend
+    hostname: vue_frontend
+    container_name: vue_frontend
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -11,9 +11,11 @@ services:
       - "${FRONTEND_PORT}:4200"
     volumes:
       - ./frontend:/frontend
+      - /frontend/node_modules
     environment:
       TZ: UTC
-    command: ["sh", "-c", "npx -y http-server /frontend -p 4200 -a 0.0.0.0"]
+      CHOKIDAR_USEPOLLING: "true"
+    command: ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 4200 --strictPort"]
     restart: unless-stopped
     depends_on:
       - backend

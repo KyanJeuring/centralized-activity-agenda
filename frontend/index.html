@@ -6,29 +6,7 @@
     <title>Centralized Activity Agenda</title>
 </head>
 <body>
-    <h1>Angular Test Page</h1>
-
-        <p>If you see this page, the frontend is running inside Docker.</p>
-
-        <button id="testBackendBtn" type="button">Test Backend</button>
-
-        <p id="backendMessage"></p>
-
-        <script>
-            const testBackendBtn = document.getElementById("testBackendBtn");
-            const backendMessage = document.getElementById("backendMessage");
-
-            testBackendBtn.addEventListener("click", async () => {
-                backendMessage.textContent = "Checking backend...";
-
-                try {
-                    const response = await fetch("http://localhost:8000/api/v1/test-endpoint", { method: "GET" });
-                    const message = await response.text();
-                    backendMessage.textContent = `Backend response: ${message}`;
-                } catch (error) {
-                    backendMessage.textContent = "Backend request failed. Check if backend container is running on port 8000.";
-                }
-            });
-        </script>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
 </body>
 </html>
