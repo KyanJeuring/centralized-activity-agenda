@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreContactRequest;
 use App\Mail\ContactNotificationForAdmin;
+use App\Mail\ContactRequestReceived;
 use App\Mail\ContactRequestRejected;
 use App\Models\ContactRequest;
 use App\Services\ClientRegistrationService;
@@ -44,10 +45,21 @@ class ContactController extends Controller
 
         $contactRequest = ContactRequest::create($data);
         $this->notifyAdmin($contactRequest);
+        $this->notifyRequester($contactRequest);
 
         return response()->json([
             'message' => 'Contact request submitted successfully.',
-            'data' => $contactRequest,
+            'data' => [
+                'id' => $contactRequest->id,
+                'name' => $contactRequest->name,
+                'email' => $contactRequest->email,
+                'organisation' => $contactRequest->organisation,
+                'message' => $contactRequest->message,
+                'intent' => $contactRequest->intent,
+                'status' => $contactRequest->status,
+                'created_at' => $contactRequest->created_at,
+                'updated_at' => $contactRequest->updated_at,
+            ],
         ], 201);
     }
 
@@ -121,6 +133,11 @@ class ContactController extends Controller
         ]);
 
         Mail::to($adminEmail)->send(new ContactNotificationForAdmin($contactRequest, $approveUrl, $rejectUrl));
+    }
+
+    protected function notifyRequester(ContactRequest $contactRequest): void
+    {
+        Mail::to($contactRequest->email)->send(new ContactRequestReceived($contactRequest));
     }
 
     protected function validateAdminToken(ContactRequest $contactRequest, string $token): void

@@ -19,6 +19,10 @@ class ContactRequest extends Model
         'admin_token',
     ];
 
+    protected $hidden = [
+        'admin_token',
+    ];
+
     protected static function booted(): void
     {
         static::creating(function (ContactRequest $contactRequest) {
