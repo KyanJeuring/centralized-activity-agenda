@@ -22,4 +22,8 @@ Route::group([], function () {
         // This is where you'll eventually add POST/PUT routes for the agenda
     });
 
+    Route::middleware('auth:api')->group(function () {
+        Route::post('/scraper/staging', [ScraperController::class, 'createStaging']);
+    });
+
 });
