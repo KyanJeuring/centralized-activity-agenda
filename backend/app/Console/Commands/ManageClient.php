@@ -6,7 +6,9 @@ use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Throwable;
 
 class ManageClient extends Command
 {
@@ -34,25 +36,72 @@ class ManageClient extends Command
 
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->error('Invalid email address provided.');
+            Log::warning('Client registration rejected due to invalid email', [
+                'type' => 'validation',
+                'email' => $email,
+            ]);
 
             return self::FAILURE;
         }
 
-        $this->ensurePassportKeysReady();
-        $this->ensurePersonalAccessClientExists();
+        try {
+            $this->ensurePassportKeysReady();
+            $this->ensurePersonalAccessClientExists();
+        } catch (Throwable $exception) {
+            Log::critical('Client registration setup failed', [
+                'type' => $exception::class,
+                'message' => $exception->getMessage(),
+                'email' => $email,
+            ]);
+
+            $this->error('Unable to prepare Passport credentials. Check the application logs.');
+
+            return self::FAILURE;
+        }
 
         $this->info('Creating token for: '.$email);
 
-        $user = User::firstOrCreate(
-            ['email' => $email],
-            [
-                'name' => 'API Client',
-                'password' => Hash::make(Str::random(32)),
-            ]
-        );
+        try {
+            $user = User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => 'API Client',
+                    'password' => Hash::make(Str::random(32)),
+                ]
+            );
+        } catch (Throwable $exception) {
+            Log::critical('Client registration failed while creating the user', [
+                'type' => $exception::class,
+                'message' => $exception->getMessage(),
+                'email' => $email,
+            ]);
 
-        $tokenResult = $user->createToken('Manual-Token');
-        $token = $tokenResult->accessToken;
+            $this->error('Unable to create or load the client user. Check the application logs.');
+
+            return self::FAILURE;
+        }
+
+        try {
+            $tokenResult = $user->createToken('Manual-Token');
+            $token = $tokenResult->accessToken;
+        } catch (Throwable $exception) {
+            Log::critical('Client registration failed while generating the token', [
+                'type' => $exception::class,
+                'message' => $exception->getMessage(),
+                'email' => $email,
+                'user_id' => $user->id,
+            ]);
+
+            $this->error('The user was created, but the token could not be generated. Check the application logs.');
+
+            return self::FAILURE;
+        }
+
+        Log::info('Client registration completed', [
+            'type' => 'registration',
+            'email' => $email,
+            'user_id' => $user->id,
+        ]);
 
         $this->info('-----------------------------------------');
         $this->info('TOKEN GENERATED SUCCESSFULLY');

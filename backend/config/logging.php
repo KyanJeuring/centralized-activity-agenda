@@ -5,6 +5,12 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
 use Monolog\Processor\PsrLogMessageProcessor;
 
+$stackChannels = array_filter(array_map('trim', explode(',', (string) env('LOG_STACK', 'single'))));
+
+if (! in_array('stderr', $stackChannels, true)) {
+    $stackChannels[] = 'stderr';
+}
+
 return [
 
     /*
@@ -54,7 +60,7 @@ return [
 
         'stack' => [
             'driver' => 'stack',
-            'channels' => explode(',', (string) env('LOG_STACK', 'single')),
+            'channels' => $stackChannels,
             'ignore_exceptions' => false,
         ],
 
@@ -101,7 +107,10 @@ return [
             'handler_with' => [
                 'stream' => 'php://stderr',
             ],
-            'formatter' => env('LOG_STDERR_FORMATTER'),
+            'formatter' => env('LOG_STDERR_FORMATTER', \App\Logging\ColoredLineFormatter::class),
+            'formatter_with' => [
+                'colorsEnabled' => env('LOG_STDERR_COLORS', true),
+            ],
             'processors' => [PsrLogMessageProcessor::class],
         ],
 

@@ -6,6 +6,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 abstract class Controller
 {
@@ -14,6 +16,16 @@ abstract class Controller
         $message = $this->extractPostgresErrorMessage($exception);
         $sqlState = $this->extractPostgresSqlState($exception);
         $status = $this->resolvePostgresStatusCode($sqlState, $message);
+
+        $this->logException(
+            $exception,
+            'Database stored procedure failed',
+            [
+                'sql_state' => $sqlState,
+                'status_code' => $status,
+            ],
+            $status >= 500 ? 'critical' : 'error'
+        );
 
         $payload = [
             'message' => $message,
@@ -24,6 +36,19 @@ abstract class Controller
         }
 
         return response()->json($payload, $status);
+    }
+
+    protected function logAction(string $message, array $context = [], string $level = 'info'): void
+    {
+        Log::log($level, $message, $context);
+    }
+
+    protected function logException(Throwable $exception, string $message, array $context = [], string $level = 'error'): void
+    {
+        $this->logAction($message, array_merge([
+            'exception_type' => $exception::class,
+            'exception_message' => $exception->getMessage(),
+        ], $context), $level);
     }
 
     protected function extractPostgresErrorMessage(QueryException $exception): string
