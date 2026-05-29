@@ -183,7 +183,8 @@ function goToDetail() {
   background-color: #1b3a6b;
   color: white;
   border: none;
-  padding: 0.65rem;
+  padding: 0.75rem;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -194,8 +195,9 @@ function goToDetail() {
   background-color: #14305a;
 }
 .external-link {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;

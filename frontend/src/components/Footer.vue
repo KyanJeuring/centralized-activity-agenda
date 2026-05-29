@@ -44,7 +44,8 @@ defineExpose({ $el: footerRoot });
 }
 
 .footer-inner {
-  max-width: 2400px;
+  max-width: 1280px;
+  padding: 0 var(--page-gutter);
   margin: 0 auto;
   display: flex;
   align-items: flex-start;
@@ -97,10 +98,13 @@ defineExpose({ $el: footerRoot });
   padding: 15px 0 0 0;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 480px) {
   .fooetr-inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .footer-cta {
+    font-size: 0.85rem;
   }
 }
 </style>
