@@ -249,6 +249,24 @@ The frontend is configured with hot module replacement (HMR) for live updates du
 
 Changes to files in `frontend/src/` are automatically reflected in the browser.
 
+## Production
+
+The production stack runs the frontend, backend, and database together in Docker Compose.
+
+The frontend is built as a static Vue app and served by Nginx.
+The backend runs in production mode with `APP_ENV=production` and `APP_DEBUG=false`.
+
+Use the production compose file to build and run the full stack:
+```bash
+docker compose -f compose.prod.yaml up --build -d
+```
+
+The frontend bundle is baked with `http://localhost:${BACKEND_PORT}/api/v1` so it can talk to the backend without additional runtime configuration.
+
+Frontend: `http://localhost:${FRONTEND_PORT}`
+
+Backend: `http://localhost:${BACKEND_PORT}`
+
 ## Troubleshooting
 
 ### Backend Won't Start
