@@ -109,11 +109,11 @@ function resetFilters() {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  align-items: center;
 }
 .search-input-wrap {
   flex: 1 1 240px;
   min-width: 0;
-  width: 100%;
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -214,16 +214,28 @@ function resetFilters() {
   grid-column: 1 / -1;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   .filter-inner {
     flex-direction: column;
     align-items: stretch;
   }
-  .search-input-wrap,
+  .search-input-wrap {
+    flex: 0 0 auto;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    align-self: stretch;
+
+  }
   .filter-select,
   .reset-btn {
     width: 100%;
     min-width: 0;
+    height: auto;
+    align-self: stretch;
+  }
+  .search-input {
+    min-height: 44px;
   }
 }
 
