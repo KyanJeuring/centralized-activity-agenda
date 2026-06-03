@@ -2,17 +2,20 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Services\ClientRegistrationService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 class ManageClient extends Command
 {
+    public function __construct(private ClientRegistrationService $registrationService)
+    {
+        parent::__construct();
+    }
+
     // Example: php artisan client:manage api.client@example.com
+
     /**
      * The name and signature of the console command.
      *
@@ -36,6 +39,7 @@ class ManageClient extends Command
 
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->error('Invalid email address provided.');
+
             Log::warning('Client registration rejected due to invalid email', [
                 'type' => 'validation',
                 'email' => $email,
@@ -44,55 +48,18 @@ class ManageClient extends Command
             return self::FAILURE;
         }
 
-        try {
-            $this->ensurePassportKeysReady();
-            $this->ensurePersonalAccessClientExists();
-        } catch (Throwable $exception) {
-            Log::critical('Client registration setup failed', [
-                'type' => $exception::class,
-                'message' => $exception->getMessage(),
-                'email' => $email,
-            ]);
-
-            $this->error('Unable to prepare Passport credentials. Check the application logs.');
-
-            return self::FAILURE;
-        }
-
         $this->info('Creating token for: '.$email);
 
         try {
-            $user = User::firstOrCreate(
-                ['email' => $email],
-                [
-                    'name' => 'API Client',
-                    'password' => Hash::make(Str::random(32)),
-                ]
-            );
+            $result = $this->registrationService->registerClient($email);
         } catch (Throwable $exception) {
-            Log::critical('Client registration failed while creating the user', [
+            Log::critical('Client registration failed', [
                 'type' => $exception::class,
                 'message' => $exception->getMessage(),
                 'email' => $email,
             ]);
 
-            $this->error('Unable to create or load the client user. Check the application logs.');
-
-            return self::FAILURE;
-        }
-
-        try {
-            $tokenResult = $user->createToken('Manual-Token');
-            $token = $tokenResult->accessToken;
-        } catch (Throwable $exception) {
-            Log::critical('Client registration failed while generating the token', [
-                'type' => $exception::class,
-                'message' => $exception->getMessage(),
-                'email' => $email,
-                'user_id' => $user->id,
-            ]);
-
-            $this->error('The user was created, but the token could not be generated. Check the application logs.');
+            $this->error($exception->getMessage());
 
             return self::FAILURE;
         }
@@ -100,47 +67,22 @@ class ManageClient extends Command
         Log::info('Client registration completed', [
             'type' => 'registration',
             'email' => $email,
-            'user_id' => $user->id,
+            'user_id' => $result['user']->id,
+            'club_id' => $result['club']->id,
+            'email_sent' => $result['email_sent'],
         ]);
+
+        $this->info('Client registration completed successfully.');
+        $this->info('Email sent: '.($result['email_sent'] ? 'yes' : 'no'));
+        $this->info('User ID: '.$result['user']->id);
+        $this->info('Club ID: '.$result['club']->id);
 
         $this->info('-----------------------------------------');
         $this->info('TOKEN GENERATED SUCCESSFULLY');
-        $this->line($token);
+        $this->line($result['token']);
         $this->info('-----------------------------------------');
         $this->warn("Give this string to the client. It is their 'Master Key'.");
 
         return self::SUCCESS;
-    }
-
-    private function ensurePersonalAccessClientExists(): void
-    {
-        $hasPersonalClient = DB::table('oauth_clients')
-            ->where('provider', 'users')
-            ->where('grant_types', 'like', '%personal_access%')
-            ->exists();
-
-        if ($hasPersonalClient) {
-            return;
-        }
-
-        $this->call('passport:client', [
-            '--personal' => true,
-            '--name' => 'Personal Access Client',
-            '--provider' => 'users',
-            '--no-interaction' => true,
-        ]);
-    }
-
-    private function ensurePassportKeysReady(): void
-    {
-        $privateKeyPath = storage_path('oauth-private.key');
-        $publicKeyPath = storage_path('oauth-public.key');
-
-        if (! file_exists($privateKeyPath) || ! file_exists($publicKeyPath)) {
-            $this->call('passport:keys', ['--force' => true]);
-        }
-
-        @chmod($privateKeyPath, 0600);
-        @chmod($publicKeyPath, 0600);
     }
 }
