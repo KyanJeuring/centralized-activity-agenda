@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\ScraperController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\SystemController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,11 @@ Route::group([], function () {
         Route::get('/agenda', [SystemController::class, 'agenda']);
 
         // This is where you'll eventually add POST/PUT routes for the agenda
+    });
+
+    Route::middleware('auth:api')->group(function () {
+        Route::get('/scraper/list', [ScraperController::class, 'list']);
+        Route::post('/scraper/staging', [ScraperController::class, 'createStaging']);
     });
 
 });
