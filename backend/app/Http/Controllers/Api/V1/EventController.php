@@ -21,6 +21,10 @@ class EventController extends Controller
     {
         try {
             $result = DB::selectOne('SELECT current_database() AS database, current_user AS username');
+            $this->logAction('Event backend connectivity check succeeded', [
+                'database' => $result->database,
+                'username' => $result->username,
+            ]);
 
             return response(
                 "[200] Laravel backend is up. Connected to {$result->database} as {$result->username}.",
@@ -28,6 +32,8 @@ class EventController extends Controller
                 ['Content-Type' => 'text/plain']
             );
         } catch (Throwable $exception) {
+            $this->logException($exception, 'Event backend connectivity check failed', [], 'critical');
+
             return response(
                 '[500] ' . $exception->getMessage(),
                 Response::HTTP_INTERNAL_SERVER_ERROR,
@@ -203,6 +209,11 @@ class EventController extends Controller
         $ownedClubId = $this->resolveDefaultOwnedClubId($userId);
 
         if ($ownedClubId === null) {
+            $this->logAction('Event creation blocked because no owned club was found', [
+                'user_id' => $userId,
+                'title' => $data['title'] ?? null,
+            ], 'warning');
+
             return response()->json([
                 'message' => 'No club is linked to your account yet. Create/link a club before posting events.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -229,6 +240,12 @@ class EventController extends Controller
         $eventId = isset($result->event_id) ? (string) $result->event_id : null;
 
         if (! $eventId) {
+            $this->logAction('Event creation returned no event id', [
+                'user_id' => $userId,
+                'club_id' => $ownedClubId,
+                'title' => $data['title'] ?? null,
+            ], 'error');
+
             return response()->json([
                 'message' => 'Event could not be created.',
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
@@ -237,10 +254,22 @@ class EventController extends Controller
         $event = DB::table('vw_event_details')->where('id', $eventId)->first();
 
         if (! $event) {
+            $this->logAction('Event was created but could not be reloaded', [
+                'user_id' => $userId,
+                'club_id' => $ownedClubId,
+                'event_id' => $eventId,
+            ], 'error');
+
             return response()->json([
                 'message' => 'Event created but could not be loaded.',
             ], Response::HTTP_CREATED);
         }
+
+        $this->logAction('Event created', [
+            'user_id' => $userId,
+            'club_id' => $ownedClubId,
+            'event_id' => $eventId,
+        ]);
 
         return response()->json(new EventResource($event), Response::HTTP_CREATED);
     }
@@ -280,12 +309,22 @@ class EventController extends Controller
         $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
+            $this->logAction('Event update requested for missing event', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
 
         if (! $this->isOwnedEvent($id, $userId)) {
+            $this->logAction('Event update rejected because the event is not owned by the authenticated user', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => 'You are not allowed to update this event.',
             ], Response::HTTP_FORBIDDEN);
@@ -313,10 +352,20 @@ class EventController extends Controller
         }
 
         if (! $this->postgresBool($result->updated ?? false)) {
+            $this->logAction('Event update returned no affected row', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
+
+        $this->logAction('Event updated', [
+            'user_id' => $userId,
+            'event_id' => $id,
+        ]);
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -339,12 +388,22 @@ class EventController extends Controller
         $userId = $this->authenticatedUserId($request);
 
         if (! DB::table('events')->where('id', $id)->exists()) {
+            $this->logAction('Event cancel requested for missing event', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
 
         if (! $this->isOwnedEvent($id, $userId)) {
+            $this->logAction('Event cancel rejected because the event is not owned by the authenticated user', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => 'You are not allowed to cancel this event.',
             ], Response::HTTP_FORBIDDEN);
@@ -357,10 +416,20 @@ class EventController extends Controller
         }
 
         if (! $this->postgresBool($result->cancelled ?? false)) {
+            $this->logAction('Event cancel returned no affected row', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
+
+        $this->logAction('Event cancelled', [
+            'user_id' => $userId,
+            'event_id' => $id,
+        ]);
 
         return response()->json([
             'message' => 'Event cancelled successfully.',
@@ -403,12 +472,22 @@ class EventController extends Controller
         $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
+            $this->logAction('Partial event update requested for missing event', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
 
         if (! $this->isOwnedEvent($id, $userId)) {
+            $this->logAction('Partial event update rejected because the event is not owned by the authenticated user', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => 'You are not allowed to update this event.',
             ], Response::HTTP_FORBIDDEN);
@@ -463,10 +542,21 @@ class EventController extends Controller
         }
 
         if (! $this->postgresBool($result->updated ?? false)) {
+            $this->logAction('Partial event update returned no affected row', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
+
+        $this->logAction('Event partially updated', [
+            'user_id' => $userId,
+            'event_id' => $id,
+            'updated_fields' => array_keys($updates),
+        ]);
 
         return response()->json(['message' => 'Event updated successfully.'], Response::HTTP_OK);
     }
@@ -490,12 +580,22 @@ class EventController extends Controller
         $event = DB::table('events')->where('id', $id)->first();
 
         if (! $event) {
+            $this->logAction('Event delete requested for missing event', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
 
         if (! $this->isOwnedEvent($id, $userId)) {
+            $this->logAction('Event delete rejected because the event is not owned by the authenticated user', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => 'You are not allowed to delete this event.',
             ], Response::HTTP_FORBIDDEN);
@@ -508,10 +608,20 @@ class EventController extends Controller
         }
 
         if (! $this->postgresBool($result->deleted ?? false)) {
+            $this->logAction('Event delete returned no affected row', [
+                'user_id' => $userId,
+                'event_id' => $id,
+            ], 'warning');
+
             return response()->json([
                 'message' => "Event with ID {$id} not found.",
             ], Response::HTTP_NOT_FOUND);
         }
+
+        $this->logAction('Event deleted', [
+            'user_id' => $userId,
+            'event_id' => $id,
+        ]);
 
         return response()->json([
             'message' => 'Event deleted successfully.',

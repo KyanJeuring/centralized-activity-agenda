@@ -51,7 +51,7 @@ caa/
 
 ```bash
 # Clone the repository (if not already done)
-git clone <repository-url>
+git clone <repository-url> caa
 cd caa
 
 # Copy environment files
