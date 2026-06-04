@@ -2,6 +2,8 @@
 
 namespace App\Mail;
 
+use App\Models\Club;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
@@ -10,29 +12,26 @@ class WelcomeEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $name;
-    public $welcomeUrl;
+    public User $user;
+    public Club $club;
+    public string $token;
 
-    /**
-     * Create a new message instance.
-     */
-    public function __construct(string $name, string $welcomeUrl = null)
+    public function __construct(User $user, Club $club, string $token)
     {
-        $this->name = $name;
-        $this->welcomeUrl = $welcomeUrl;
+        $this->user = $user;
+        $this->club = $club;
+        $this->token = $token;
     }
 
-    /**
-     * Build the message.
-     */
     public function build()
     {
         return $this->subject('Welcome to ' . config('app.name'))
-                    ->view('emails.welcome.html')
-                    ->text('emails.welcome.plain')
+                    ->view('mail.welcome.html')
+                    ->text('mail.welcome.plain')
                     ->with([
-                        'name' => $this->name,
-                        'welcomeUrl' => $this->welcomeUrl,
+                        'user' => $this->user,
+                        'club' => $this->club,
+                        'token' => $this->token,
                     ]);
     }
 }
