@@ -7,6 +7,7 @@ use Laravel\Passport\Passport;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schedule;
 use App\Jobs\IngestScraperStaging;
 
@@ -28,6 +29,11 @@ class AppServiceProvider extends ServiceProvider
         Passport::personalAccessTokensExpireIn(now()->addYears(1));
         
         $this->configureRateLimiting();
+
+        if ($this->app->environment('local')) 
+            {
+                Mail::alwaysTo('thebencemohr@gmail.com');
+            }
         $this->configureSchedule();
     }
 
