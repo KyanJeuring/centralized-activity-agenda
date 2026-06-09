@@ -12,7 +12,7 @@ services:
       TZ: UTC
       APP_ENV: production
       APP_DEBUG: "false"
-      APP_URL: "http://localhost:${BACKEND_PORT}"
+      APP_URL: "https://your-domain.com"
       BACKEND_PORT: ${BACKEND_PORT}
       POSTGRES_HOST: database
       POSTGRES_PORT: ${POSTGRES_PORT}
@@ -31,7 +31,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.production
       args:
-        VITE_API_BASE: "http://localhost:${BACKEND_PORT}/api/v1"
+        VITE_API_BASE: "/api/v1"
     ports:
       - "${FRONTEND_PORT}:80"
     environment:
