@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\EventUrlResolver;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -72,6 +73,8 @@ class IngestScraperStaging implements ShouldQueue
                     $startDate = sprintf('%sT%s:00.000Z', $startDate, $event['start_time']);
                 }
 
+                $resolvedUrl = app(EventUrlResolver::class)->resolve($event['url'] ?? '');
+
                 $result = DB::selectOne(
                     'SELECT sp_create_event(?, ?, ?, ?, ?, ?, ?, ?) AS event_id',
                     [
@@ -79,7 +82,7 @@ class IngestScraperStaging implements ShouldQueue
                         $event['title'] ?? 'Untitled',
                         $event['organizer'] ?? 'Unknown',
                         $event['description'] ?? '',
-                        $event['url'] ?? '',
+                        $resolvedUrl,
                         $startDate,
                         $event['location'] ?? $event['source_page'] ?? null,
                         $event['img'] ?? null,

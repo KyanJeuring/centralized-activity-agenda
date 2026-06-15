@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\StoreEventRequest;
 use App\Http\Requests\Api\V1\UpdateEventRequest;
 use App\Http\Resources\Api\V1\EventResource;
+use App\Services\EventUrlResolver;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -206,6 +207,8 @@ class EventController extends Controller
         $userId = $this->authenticatedUserId($request);
         $data = $request->validated();
 
+        $data['url'] = app(EventUrlResolver::class)->resolve($data['url']);
+
         $ownedClubId = $this->resolveDefaultOwnedClubId($userId);
 
         if ($ownedClubId === null) {
@@ -331,6 +334,8 @@ class EventController extends Controller
         }
 
         $data = $request->validated();
+
+        $data['url'] = app(EventUrlResolver::class)->resolve($data['url']);
 
         try {
             $result = DB::selectOne(
@@ -497,12 +502,16 @@ class EventController extends Controller
             'title' => 'sometimes|string',
             'organizer' => 'sometimes|string',
             'description' => 'sometimes|string',
-            'url' => 'sometimes|string',
+            'url' => 'sometimes|url:http,https',
             'app_id' => 'sometimes|uuid|exists:clubs,id',
             'start_date' => 'sometimes|nullable|date',
             'location' => 'sometimes|nullable|string',
             'img' => 'sometimes|nullable|string',
         ]);
+
+        if (array_key_exists('url', $data)) {
+            $data['url'] = app(EventUrlResolver::class)->resolve($data['url']);
+        }
 
         $updates = $data;
 
