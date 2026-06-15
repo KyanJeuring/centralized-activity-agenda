@@ -28,7 +28,7 @@ class StoreEventRequest extends FormRequest
             'title' => 'required|string',
             'organizer' => 'required|string',
             'description' => 'required|string',
-            'url' => 'required|string',
+            'url' => 'required|url:http,https',
             'start_date' => 'nullable|date',
             'location' => 'nullable|string',
             'img' => 'nullable|string',
