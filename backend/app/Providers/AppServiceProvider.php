@@ -7,6 +7,9 @@ use Laravel\Passport\Passport;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schedule;
+use App\Jobs\IngestScraperStaging;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
         Passport::personalAccessTokensExpireIn(now()->addYears(1));
         
         $this->configureRateLimiting();
+
+        if ($this->app->environment('local')) 
+            {
+                Mail::alwaysTo('thebencemohr@gmail.com');
+            }
+        $this->configureSchedule();
     }
 
     protected function configureRateLimiting(): void
@@ -33,5 +42,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api', function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
+    }
+
+    protected function configureSchedule(): void
+    {
+        Schedule::job(new IngestScraperStaging())
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
 }
