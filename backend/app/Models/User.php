@@ -7,7 +7,9 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Laravel\Passport\HasApiTokens;
+use Throwable;
 
 class User extends Authenticatable
 {
@@ -17,14 +19,25 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::created(function (self $user): void {
-            Club::firstOrCreate(
-                ['owner_user_id' => $user->id],
-                [
-                    'name' => 'Club for '.$user->name,
-                    'source' => 'system',
-                    'type' => 'remote',
-                ]
-            );
+            try {
+                Club::firstOrCreate(
+                    ['owner_user_id' => $user->id],
+                    [
+                        'name' => 'Club for '.$user->name,
+                        'source' => 'system',
+                        'type' => 'remote',
+                    ]
+                );
+            } catch (Throwable $exception) {
+                Log::critical('Automatic club provisioning failed after user registration', [
+                    'type' => $exception::class,
+                    'message' => $exception->getMessage(),
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                ]);
+
+                throw $exception;
+            }
         });
     }
 
@@ -69,7 +82,7 @@ class User extends Authenticatable
 
     /**
      * Get the primary club_id for the user
-     * 
+     *
      * @return string|null
      */
     public function getClubIdAttribute()
