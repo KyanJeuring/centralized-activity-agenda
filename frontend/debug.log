@@ -1,7 +1,0 @@
-[0617/134529.047:ERROR:electron\shell\common\node_util.cc:148] Failed to initialize Node.js. {
-   "args": [ "C:\\Program Files\\Microsoft VS Code\\Code.exe", "c:\\Users\\gebruiker\\.vscode\\extensions\\stylelint.vscode-stylelint-2.2.1\\dist\\worker-entry.js" ],
-   "location": ", at node:internal/buffer:1104",
-   "message": "Uncaught RangeError: Failed to allocate memory",
-   "source_line": "  return new FastBuffer(createUnsafeArrayBuffer(size));"
-}
-
