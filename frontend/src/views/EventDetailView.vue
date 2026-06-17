@@ -10,7 +10,6 @@ const { events, isLoading, fetchEvents } = useEvents();
 onMounted(() => fetchEvents());
 const route = useRoute();
 const router = useRouter();
-const bannerAlt = computed(() => event.value?.title ?? "Event banner");
 
 watch(isLoading, (loading) => {
   if (!loading && !event.value) {
@@ -22,16 +21,18 @@ const event = computed(() =>
   events.value.find((e) => e.id === route.params.id),
 );
 
+const bannerAlt = computed(() => event.value?.title ?? "Event banner");
+
 const bannerImg = computed(() =>
   imgForEvent(event.value?.id, event.value?.img),
 );
 
 const organizerInitial = computed(() =>
-  (events.value?.organizer ?? "E").charAt(0).toUpperCase(),
+  (event.value?.organizer ?? "E").charAt(0).toUpperCase(),
 );
 
 const organiserColor = computed(() =>
-  organiserColour(events.value?.organizer ?? ""),
+  organiserColour(event.value?.organizer ?? ""),
 );
 
 const formattedDate = computed(() => {
