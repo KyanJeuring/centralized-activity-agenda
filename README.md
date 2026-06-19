@@ -4,45 +4,53 @@
 
 CAA is a comprehensive events management platform that allows users to view all upcoming events from the hubs and clubs in the Northern of the Netherlands.
 
+> [!IMPORTANT]
+> This project is designed to run as a Docker Compose deployment — the frontend, backend, and database run as containers.
+> It is not intended to be deployed as a traditional single-server Laravel application (shared PHP hosting).
+> To run in production the target server must have `Docker` and `Docker Compose` installed; see the **Production** section for details.
+
 ## Technology Stack
 
-- **Backend**: Laravel 11 (PHP) with Passport OAuth
-- **Frontend**: Vue 3 with Vite bundler and Bootstrap Icons
-- **Database**: PostgreSQL 17
-- **Orchestration**: Docker Compose
-- **Admin Tool**: pgAdmin 4
-- **API Documentation**: Swagger/OpenAPI
+- **Backend**: Laravel 11 (PHP) with Passport OAuth for API authentication
+- **Frontend**: Vue 3 with Vite and Bootstrap Icons for the user interface
+- **Database**: PostgreSQL 17 for persistent application data
+- **Orchestration**: Docker Compose for local service management
+- **Admin Tool**: pgAdmin 4 for database administration
+- **API Documentation**: Swagger/OpenAPI for interactive endpoint docs
 
 ## Prerequisites
 
 - **Docker** and **Docker Compose** installed
 - **Git** for version control
-- Text editor or IDE
+- A text editor or IDE
 
 ## Project Structure
 
 ```
 caa/
-├── backend/                 # Laravel API application
-│   ├── app/                # Application logic
-│   ├── config/             # Configuration files
-│   ├── database/           # Migrations, factories, seeders
-│   ├── routes/             # API route definitions
-│   ├── tests/              # Test suites
-│   ├── storage/            # Application storage (logs, API docs)
-│   ├── .env.example        # Environment template
-│   └── Dockerfile
-├── frontend/               # Vue 3 application
-│   ├── src/               # Vue components and pages
-│   ├── public/            # Static assets
-│   ├── package.json
-│   └── Dockerfile
-├── database/              # Database configuration
-│   ├── sql/              # SQL files and stored procedures
-│   ├── pgadmin/          # pgAdmin configuration
-│   └── backups/          # Database backups
-├── docker-compose.yaml   # Service orchestration
-└── README.md            # This file
+├── backend/                      # Laravel API application
+│   ├── app/                      # Core application logic
+│   ├── config/                   # Application configuration files
+│   ├── database/                 # Migrations, factories, and seeders
+│   ├── routes/                   # API route definitions
+│   ├── tests/                    # Automated test suites
+│   ├── storage/                  # Runtime storage for logs and generated docs
+│   ├── .env.example              # Backend environment template
+│   ├── Dockerfile                # Backend container image definition
+│   └── Dockerfile.production     # Production backend image definition
+├── frontend/                     # Vue 3 application
+│   ├── src/                      # Vue components, views, and pages
+│   ├── public/                   # Static public assets
+│   ├── package.json              # Frontend package manifest
+│   ├── Dockerfile                # Frontend container image definition
+│   └── Dockerfile.production     # Production frontend image definition
+├── database/                     # Database-related configuration and assets
+│   ├── sql/                      # SQL scripts and stored procedures
+│   ├── pgadmin/                  # pgAdmin configuration files
+│   └── backups/                  # Database backup files
+├── compose.yaml                  # Development service orchestration
+├── compose.prod.yaml             # Production service orchestration
+└── README.md                     # Project documentation
 ```
 
 ## Quick Start
@@ -51,7 +59,7 @@ caa/
 
 ```bash
 # Clone the repository (if not already done)
-git clone <repository-url>
+git clone <repository-url> caa
 cd caa
 
 # Copy environment files
@@ -249,6 +257,24 @@ The frontend is configured with hot module replacement (HMR) for live updates du
 
 Changes to files in `frontend/src/` are automatically reflected in the browser.
 
+## Production
+
+The production stack runs the frontend, backend, and database together in Docker Compose.
+
+The frontend is built as a static Vue app and served by Nginx.
+The backend runs in production mode with `APP_ENV=production` and `APP_DEBUG=false`.
+
+Use the production compose file to build and run the full stack:
+```bash
+docker compose -f compose.prod.yaml up --build -d
+```
+
+The frontend bundle is baked with `http://localhost:${BACKEND_PORT}/api/v1` so it can talk to the backend without additional runtime configuration.
+
+Frontend: `http://localhost:${FRONTEND_PORT}`
+
+Backend: `http://localhost:${BACKEND_PORT}`
+
 ## Troubleshooting
 
 ### Backend Won't Start
@@ -291,3 +317,4 @@ docker compose exec backend php artisan migrate
 For issues or questions, refer to the individual README files:
 - [Backend README](backend/README.md)
 - [API Endpoints](backend/ENDPOINTS.md)
+- [Backup Policy](BACKUP_POLICY.md)

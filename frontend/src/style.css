@@ -1,3 +1,17 @@
+:root {
+  --bp-sm: 480px;
+  --bp-md: 768px;
+  --bp-lg: 1024px;
+  --bp-xl: 1280px;
+
+  --page-gutter: clamp(1rem, 4vw, 2rem);
+
+  --text-sm: clamp(0.875rem, 0.82rem + 0.28vw, 1rem);
+  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --text-lg: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;

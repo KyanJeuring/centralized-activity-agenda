@@ -6,6 +6,7 @@ const form = reactive({
   email: "",
   organisation: "",
   message: "",
+  intent: "",
 });
 
 const errors = reactive({});
@@ -19,6 +20,7 @@ function validate() {
   delete errors.organisation;
   delete errors.message;
 
+  // ----- checks -----
   if (!form.name.trim()) errors.name = "Name is required.";
 
   if (!form.email.trim()) errors.email = "Email is required";
@@ -26,25 +28,38 @@ function validate() {
     errors.email = "Please enter a valid email address.";
 
   if (!form.message.trim()) errors.message = "Please write a short message.";
+
+  if (!form.intent) errors.intent = "Please select an intent"
 }
 
 async function handleSubmit() {
-  validate();
+  validate()
+  if (Object.keys(errors).length > 0) return
 
-  if (Object.keys(errors).length > 0) return;
+  isSubmitting.value = true
 
-  isSubmitting.value = true;
+  try {
+    const API_BASE =  import.meta.env.VITE_API_BASE ||"http://localhost:8000/api/v1"
+    const response = await fetch(`${API_BASE}/contact`, {
+      method: "POST",
+      headers: {  "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    })
 
-  // Later replace this with: await fetch("/api/contact", { method: "POST", body: JSON.stringify(form) })
-  await new Promise((resolve) => setTimeout(resolve, 800));
+    if (!response.ok) throw new Error(`Error: ${response.status}`)
 
-  isSubmitting.value = false;
-  submitted.value = true;
-
-  form.name = "";
-  form.email = "";
-  form.organisation = "";
-  form.message = "";
+    submitted.value = true
+    form.name = ""
+    form.email = ""
+    form.organisation = ""
+    form.message = ""
+    form.intent = ""
+  } catch (err) {
+    errors.submit = "Something went wrong. Please try again."
+    console.error("[contact form]", err)
+  } finally {
+    isSubmitting.value = false
+  }
 }
 </script>
 
@@ -118,6 +133,7 @@ async function handleSubmit() {
           class="contact-form"
           novalidate
         >
+          <!-- Name -->
           <div class="form-group">
             <label for="name">Your name <span class="required">*</span></label>
             <input
@@ -130,6 +146,7 @@ async function handleSubmit() {
             <p v-if="errors.name" class="error-msg">{{ errors.name }}</p>
           </div>
 
+          <!-- Email -->
           <div class="form-group">
             <label for="email"
               >Email address <span class="required">*</span></label
@@ -144,18 +161,36 @@ async function handleSubmit() {
             <p v-if="errors.email" class="error-msg">{{ errors.email }}</p>
           </div>
 
+          <!-- Organisation URL -->
           <div class="form-group">
-            <label for="org"
-              >Organisation / Hub <span class="required">*</span></label
-            >
+            <label for="organisation">Organisation's URL</label>
             <input
-              id="org"
+              id="organisation"
               v-model="form.organisation"
-              type="text"
-              placeholder="Your organisation"
+              type="url"
+              placeholder="https://www.yourclub.com/events"
             />
           </div>
 
+          <!-- Intent -->
+          <div class="form-group">
+            <label for="intent">Intent <span class="required">*</span></label>
+            <select
+              id="intent"
+              v-model="form.intent"
+              :class="{ 'input-error': errors.intent }"
+            >
+              <option value="" disabled>Select an option...</option>
+              <option value="register">Register for API</option>
+              <option value="scraping">Register for Scraping</option>
+              <option value="switch">Request to switch</option>
+            </select>
+            <span v-if="errors.intent" class="error-msg">{{
+              errors.intent
+            }}</span>
+          </div>
+
+          <!-- Message -->
           <div class="form-group">
             <label for="message">Message <span class="required">*</span></label>
             <textarea
@@ -168,6 +203,10 @@ async function handleSubmit() {
             <p v-if="errors.message" class="error-msg">{{ errors.message }}</p>
           </div>
 
+          <!-- Submit Button -->
+          <span v-if="errors.submit" class="error-msg">{{
+            errors.submit
+          }}</span>
           <button type="submit" class="submit-btn" :disabled="isSubmitting">
             {{ isSubmitting ? "Sending..." : "Send message" }}
           </button>
@@ -311,6 +350,35 @@ async function handleSubmit() {
 .form-group input:focus,
 .form-group textarea:focus {
   border-color: #1b3a6b;
+  box-shadow: 0 0 0 3px rgba(27, 58, 107, 0.08);
+}
+
+.form-group select {
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 9px;
+  font-size: 0.9rem;
+  color: #111827;
+  outline: none;
+  background: white;
+  cursor: pointer;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+  font-family: inherit;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #9ca3af 50%),
+    linear-gradient(135deg, #9ca3af 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 2px),
+    calc(100% - 11px) calc(50% - 2px);
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.form-group select:focus {
+  border-color: #1B3A6B;
   box-shadow: 0 0 0 3px rgba(27, 58, 107, 0.08);
 }
 

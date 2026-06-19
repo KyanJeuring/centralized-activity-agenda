@@ -138,6 +138,7 @@ const fabStyle = computed(() => ({
   .fab {
     padding: 0.8rem;
     border-radius: 50%;
+    right: 1rem;
   }
 }
 </style>
