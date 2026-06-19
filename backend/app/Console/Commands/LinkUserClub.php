@@ -61,6 +61,35 @@ class LinkUserClub extends Command
             return 1;
         }
 
+        try {
+            $club = \App\Models\Club::create([
+                'id' => \Illuminate\Support\Str::uuid(),
+                'name' => $user->name,
+                'source' => '',
+                'type' => 'remote',
+                'owner_user_id' => $user->id
+            ]);
+        } catch (Throwable $exception) {
+            Log::critical('User club linking failed', [
+                'type' => $exception::class,
+                'message' => $exception->getMessage(),
+                'email' => $email,
+                'user_id' => $user->id,
+            ]);
+
+            $this->error('Unable to create the club. Check the application logs.');
+
+            return 1;
+        }
+
+        $this->info("Successfully linked user {$email} to new club: {$club->name} (ID: {$club->id})");
+        Log::info('User club linked successfully', [
+            'type' => 'registration',
+            'email' => $email,
+            'user_id' => $user->id,
+            'club_id' => $club->id,
+        ]);
+        
         $this->info("Successfully linked user {$email} to new club: {$club->name} (ID: {$club->id})");
         Log::info('User club linked successfully', [
             'type' => 'registration',

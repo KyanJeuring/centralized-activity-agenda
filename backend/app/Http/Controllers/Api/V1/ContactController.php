@@ -120,7 +120,7 @@ class ContactController extends Controller
 
     protected function notifyAdmin(ContactRequest $contactRequest): void
     {
-        $adminEmail = config('app.admin_email', 'thebencemohr@gmail.com');
+        $adminEmail = env('ADMIN_EMAIL');
 
         $approveUrl = route('contact.approve', [
             'contact_request' => $contactRequest->id,

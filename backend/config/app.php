@@ -54,7 +54,7 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
-    'admin_email' => env('MAIL_ADMIN_ADDRESS', 'thebencemohr@gmail.com'),
+    'admin_email' => env('ADMIN_EMAIL'),
 
     /*
     |--------------------------------------------------------------------------
