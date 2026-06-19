@@ -2,18 +2,14 @@
 import { computed, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { onMounted } from "vue";
+import { imgForEvent } from "../utils/eventImage.js";
 import { useEvents } from "../composables/useEvents.js";
+import { organiserColour } from "../utils/colour.js";
 
 const { events, isLoading, fetchEvents } = useEvents();
 onMounted(() => fetchEvents());
 const route = useRoute();
 const router = useRouter();
-const bannerImage = computed(
-  () =>
-    event.value?.img?.trim() ||
-    "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1600&auto=format&fit=crop",
-);
-const bannerAlt = computed(() => event.value?.title ?? "Event banner");
 
 watch(isLoading, (loading) => {
   if (!loading && !event.value) {
@@ -23,6 +19,20 @@ watch(isLoading, (loading) => {
 
 const event = computed(() =>
   events.value.find((e) => e.id === route.params.id),
+);
+
+const bannerAlt = computed(() => event.value?.title ?? "Event banner");
+
+const bannerImg = computed(() =>
+  imgForEvent(event.value?.id, event.value?.img),
+);
+
+const organizerInitial = computed(() =>
+  (event.value?.organizer ?? "E").charAt(0).toUpperCase(),
+);
+
+const organiserColor = computed(() =>
+  organiserColour(event.value?.organizer ?? ""),
 );
 
 const formattedDate = computed(() => {
@@ -40,7 +50,7 @@ const formattedDate = computed(() => {
 <template>
   <div v-if="event" class="detail-page">
     <div class="banner">
-      <img :src="bannerImage" :alt="bannerAlt" class="banner-image" />
+      <img :src="bannerImg" :alt="bannerAlt" class="banner-image" />
       <div class="banner-overlay"></div>
     </div>
 
@@ -53,8 +63,11 @@ const formattedDate = computed(() => {
       <div class="info-card">
         <p class="card-label">Event Organiser</p>
         <div class="organiser-info">
-          <div class="organiser-logo" :style="{ backgroundColor: event.color }">
-            {{ event.organizer.charAt(0) }}
+          <div
+            class="organiser-logo"
+            :style="{ backgroundColor: organiserColor }"
+          >
+            {{ organizerInitial }}
           </div>
           <div>
             <p class="organiser-name">{{ event.organizer }}</p>

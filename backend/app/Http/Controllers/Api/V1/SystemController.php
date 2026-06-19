@@ -37,12 +37,18 @@ class SystemController extends Controller
                 ? 'SQLite Sandbox'
                 : DB::selectOne('SELECT current_database() AS db')->db;
 
+            $this->logAction('System connectivity check succeeded', [
+                'database' => $dbName,
+            ]);
+
             return response()->json([
                 'status' => 'online',
                 'database' => $dbName,
                 'version' => '1.0.0',
             ]);
         } catch (Throwable $e) {
+            $this->logException($e, 'System connectivity check failed', [], 'critical');
+
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -80,6 +86,11 @@ class SystemController extends Controller
     )]
     public function agenda(Request $request)
     {
+        $this->logAction('Agenda requested', [
+            'user_id' => $request->user()?->id,
+            'user_email' => $request->user()?->email,
+        ]);
+
         return response()->json([
             'client_email' => $request->user()->email,
             'agenda_items' => [

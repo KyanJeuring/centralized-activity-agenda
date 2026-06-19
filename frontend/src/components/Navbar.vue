@@ -30,7 +30,7 @@ const isDetailPage = computed(() => route.name === "EventDetail"); // re-evaluat
 .navbar {
   background-color: #1b3a6b;
   color: white;
-  padding: 0 2rem;
+  padding: 0 var(--page-gutter);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -104,7 +104,10 @@ const isDetailPage = computed(() => route.name === "EventDetail"); // re-evaluat
     display: none;
   }
   .navbar-title {
-    font-size: 1.05rem;
+    font-size: 1rem;
+  }
+  .back-link{
+    font-size: 0.875rem;
   }
 }
 </style>

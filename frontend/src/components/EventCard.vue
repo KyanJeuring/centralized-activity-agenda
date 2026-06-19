@@ -1,6 +1,8 @@
 <script setup>
 import { computed } from "vue";
 import { useRouter } from "vue-router";
+import { imgForEvent } from "../utils/eventImage.js";
+import { organiserColour } from "../utils/colour.js";
 
 const props = defineProps({
   event: {
@@ -14,13 +16,15 @@ const router = useRouter();
 const eventTitle = computed(
   () => props.event.title ?? props.event.name ?? "Event",
 );
+
 const organizerInitial = computed(() =>
   (props.event.organizer ?? "E").charAt(0).toUpperCase(),
 );
-const coverImage = computed(
-  () =>
-    props.event.img?.trim() ||
-    "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1600&auto=format&fit=crop",
+
+const coverImage = computed(() => imgForEvent(props.event.id, props.event.img));
+
+const organiserColor = computed(() =>
+  organiserColour(props.event.organizer ?? ""),
 );
 
 // Format the date to weekday, day and month
@@ -47,7 +51,7 @@ function goToDetail() {
 
     <div class="card-body">
       <div class="organiser-row">
-        <div class="organiser-avatar">
+        <div class="organiser-avatar" :style="{ backgroundColor: organiserColor }">
           {{ organizerInitial }}
         </div>
         <span class="organiser-name">{{ event.organizer }}</span>
@@ -183,7 +187,8 @@ function goToDetail() {
   background-color: #1b3a6b;
   color: white;
   border: none;
-  padding: 0.65rem;
+  padding: 0.75rem;
+  min-height: 44px;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -194,8 +199,9 @@ function goToDetail() {
   background-color: #14305a;
 }
 .external-link {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
